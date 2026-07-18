@@ -3,8 +3,8 @@
   "short_name": "AegisPass SelfService",
   "start_url": "/login",
   "display": "standalone",
-  "background_color": "#203a5e",
-  "theme_color": "#203a5e",
+  "background_color": "#0d1117",
+  "theme_color": "#FFB300",
   "orientation": "portrait-primary",
   "icons": [
     {

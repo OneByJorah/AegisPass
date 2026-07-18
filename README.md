@@ -1,6 +1,12 @@
 # AegisPass
 
+![license](https://img.shields.io/badge/license-MIT-amber)
+![status](https://img.shields.io/badge/status-OPERATIONAL-amber)
+![stack](https://img.shields.io/badge/stack-Flask%20%7C%20LDAPS-amber)
+
 A secure, self-service Active Directory password reset and identity management portal. AegisPass lets end users reset/expire their own passwords, enroll MFA and recovery factors, and gives Domain Admins a read-only-to-privileged directory console — all over pinned LDAPS.
+
+> Branded in the **Dark Amber Cyberpunk** style (accent `#FFB300`, JetBrains Mono).
 
 ## 🚀 Features
 
