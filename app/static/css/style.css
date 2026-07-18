@@ -3,7 +3,7 @@
    Clean, modern, accessible. Inspired by top SIS/admin dashboards.
    ============================================================ */
 :root {
-  --brand:#203a5e; --brand-2:#245380; --brand-3:#2a5080;
+  --brand:#1a1206; --brand-2:#3d2a08; --brand-3:#7a4f00; --amber:#FFB300;
   --bg:#f5f7fb;
   --surface:#ffffff;
   --surface-2:#f9fbff;
@@ -42,7 +42,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.3px} h2{font-size:18px;font-w
 .app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh;background:var(--bg)}
 .app.collapsed{grid-template-columns:var(--sidebar-w-collapsed) 1fr}
 
-.sidebar{background:linear-gradient(180deg,var(--brand) 0%,#152c4d 100%);color:#fff;display:flex;flex-direction:column;padding:18px 14px;gap:6px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50}
+.sidebar{background:linear-gradient(180deg,#1a1206 0%,#0d1117 100%);color:#fff;display:flex;flex-direction:column;padding:18px 14px;gap:6px;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50}
 .brand{display:flex;align-items:center;gap:12px;padding:8px 10px 16px;border-bottom:1px solid rgba(255,255,255,.10)}
 .brand .logo{width:40px;height:40px;border-radius:12px;flex:0 0 auto;background:#fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.15)}
 .brand .logo img{width:30px;height:auto;display:block}
@@ -83,7 +83,7 @@ h1{font-size:24px;font-weight:750;letter-spacing:-.3px} h2{font-size:18px;font-w
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ── dashboard hero ── */
-.hero-card{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;border-radius:var(--radius);padding:26px 28px;box-shadow:var(--shadow-lg);margin-bottom:24px;position:relative;overflow:hidden}
+.hero-card{background:linear-gradient(135deg,#1a1206,#FFB300);color:#fff;border-radius:var(--radius);padding:26px 28px;box-shadow:var(--shadow-lg);margin-bottom:24px;position:relative;overflow:hidden}
 .hero-card::before{content:'';position:absolute;right:-40px;top:-60px;width:260px;height:260px;background:rgba(255,255,255,.08);border-radius:50%}
 .hero-card::after{content:'';position:absolute;right:60px;bottom:-80px;width:180px;height:180px;background:rgba(255,255,255,.06);border-radius:50%}
 .hero-card h1{margin:0 0 4px;font-size:24px;position:relative;z-index:1}
@@ -145,8 +145,8 @@ table.data td .sub{color:var(--txt-3);font-size:12px}
 /* ── buttons ── */
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;border:1px solid var(--border);background:#fff;color:var(--txt-2);font-weight:650;font-size:13.5px;cursor:pointer;transition:.15s;white-space:nowrap}
 .btn:hover{border-color:var(--brand);color:var(--brand);background:#fff}
-.btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand-2));border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(32,58,94,.22)}
-.btn.primary:hover{box-shadow:0 8px 24px rgba(32,58,94,.30);color:#fff}
+.btn.primary{background:linear-gradient(135deg,#1a1206,#FFB300);border-color:transparent;color:#fff;box-shadow:0 6px 18px rgba(255,179,0,.22)}
+.btn.primary:hover{box-shadow:0 8px 24px rgba(255,179,0,.35);color:#fff}
 .btn.danger{background:var(--danger-soft);border-color:rgba(239,68,68,.35);color:var(--danger)}
 .btn.ghost{background:transparent}
 .btn.sm{padding:7px 12px;font-size:12.5px;border-radius:8px}
@@ -229,7 +229,7 @@ table.data td .sub{color:var(--txt-3);font-size:12px}
 .switch input{opacity:0;width:0;height:0}
 .switch .slider{position:absolute;cursor:pointer;inset:0;background:#cbd5e1;border-radius:999px;transition:.2s}
 .switch .slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.switch input:checked + .slider{background:var(--brand)}
+.switch input:checked + .slider{background:var(--amber)}
 .switch input:checked + .slider:before{transform:translateX(20px)}
 .live-bar{background:var(--surface-3);height:10px;border-radius:999px;overflow:hidden}.live-bar span{display:block;height:100%;border-radius:999px;transition:width .6s ease}
 .bar-row{display:grid;grid-template-columns:110px 1fr 48px;align-items:center;gap:10px;font-size:13px;color:var(--txt-2)}

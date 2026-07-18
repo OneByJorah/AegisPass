@@ -244,7 +244,7 @@ function ViewDashboard(v) {
           <div class="qa-tile" onclick="navGo('users')"><div class="ico" style="background:var(--blue-soft);color:#0369a1">👤</div><div class="ttl">Browse users</div></div>
           <div class="qa-tile" onclick="navGo('groups')"><div class="ico" style="background:var(--purple-soft);color:#6d28d9">👥</div><div class="ttl">Manage groups</div></div>
           <div class="qa-tile" onclick="navGo('self')"><div class="ico" style="background:var(--ok-soft);color:#047857">🔑</div><div class="ttl">Change my password</div></div>
-          ${App.state.is_admin ? `<div class="qa-tile" onclick="showCreateUser()"><div class="ico" style="background:rgba(32,58,94,.12);color:#203a5e">➕</div><div class="ttl">Create user</div></div>
+          ${App.state.is_admin ? `<div class="qa-tile" onclick="showCreateUser()"><div class="ico" style="background:rgba(122,79,0,.12);color:#7a4f00">➕</div><div class="ttl">Create user</div></div>
           <div class="qa-tile" onclick="navGo('audit')"><div class="ico" style="background:var(--warn-soft);color:#b45309">🛡</div><div class="ttl">Audit log</div></div>` : ''}
         </div>
       </div>

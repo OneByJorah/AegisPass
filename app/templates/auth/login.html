@@ -12,48 +12,48 @@
   <meta name="apple-mobile-web-app-title" content="AegisPass SelfService">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/viseal.png') }}">
   <style>
-    :root{ --brand:#203a5e; --brand-2:#245380; --ok:#22c55e; --warn:#f59e0b; --off:#94a3b8; }
+    :root{ --brand:#1a1206; --brand-2:#3d2a08; --amber:#FFB300; --ok:#22c55e; --warn:#f59e0b; --off:#94a3b8; }
     html,body{height:100%;margin:0;background:#f2f6fb;color:#1a2436;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px}
     #auth{min-height:100%;display:grid;grid-template-columns:minmax(0,480px) 1fr}
     #auth-left{background:linear-gradient(180deg,#ffffff 0%,#f7fafd 100%);border-right:1px solid #e6edf5;padding:36px 40px 48px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:0}
-    #auth-right{background:url('{{ url_for('static', filename='brand/background.png') }}') center/cover no-repeat,linear-gradient(135deg,#1c3d63 0%,#245380 100%);background-blend-mode:overlay;min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px;position:relative;overflow:hidden}
+    #auth-right{background:url('{{ url_for('static', filename='brand/background.png') }}') center/cover no-repeat,linear-gradient(135deg,#1a1206 0%,#3d2a08 100%);background-blend-mode:overlay;min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px;position:relative;overflow:hidden}
     #auth-right::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 70% 20%, rgba(255,255,255,.14) 0%, transparent 45%);pointer-events:none}
 
     /* Animated centered logo */
     .logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:28px;animation:float 4.5s ease-in-out infinite}
-    .logo-wrap img{height:120px;width:auto;display:block;filter:drop-shadow(0 16px 40px rgba(32,58,94,.25));animation:glow 2.8s ease-in-out infinite alternate}
-    .logo-ring{width:150px;height:150px;border-radius:50%;border:2px solid rgba(32,58,94,.10);position:absolute;animation:ripple 2.8s ease-out infinite}
+    .logo-wrap img{height:120px;width:auto;display:block;filter:drop-shadow(0 16px 40px rgba(255,179,0,.35));animation:glow 2.8s ease-in-out infinite alternate}
+    .logo-ring{width:150px;height:150px;border-radius:50%;border:2px solid rgba(255,179,0,.12);position:absolute;animation:ripple 2.8s ease-out infinite}
     .logo-ring:nth-child(2){animation-delay:.9s}
     .logo-ring:nth-child(3){animation-delay:1.8s}
     .logo-outer{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
     @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-    @keyframes glow{0%{filter:drop-shadow(0 10px 30px rgba(32,58,94,.20))}100%{filter:drop-shadow(0 18px 50px rgba(32,58,94,.40))}}
+    @keyframes glow{0%{filter:drop-shadow(0 10px 30px rgba(255,179,0,.30))}100%{filter:drop-shadow(0 18px 50px rgba(255,179,0,.45))}}
     @keyframes ripple{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.2);opacity:0}}
 
-    .auth-title{margin:6px 0 0;font-size:26px;font-weight:750;color:#203a5e;letter-spacing:-.3px}
+    .auth-title{margin:6px 0 0;font-size:26px;font-weight:750;color:#1a1206;letter-spacing:-.3px}
     .auth-subtitle{color:#5a7089;margin:6px 0 26px;font-size:15px}
 
     .form-wrap{width:100%;max-width:340px;text-align:left}
     .form-group{position:relative;margin-bottom:14px}
     .form-control{display:block;width:100%;padding:13px 14px 13px 46px;font-size:15px;color:#1f2b3a;background:#fff;border:1px solid #d6e2f0;border-radius:10px;outline:none;transition:.15s}
-    .form-control:focus{border-color:#203a5e;box-shadow:0 0 0 3px rgba(32,58,94,.18)}
+    .form-control:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(255,179,0,.22)}
     .form-control-icon{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#8aa0ba;font-size:16px;display:grid;place-items:center}
-    .btn-primary{width:100%;padding:13px 18px;border-radius:10px;border:0;background:linear-gradient(135deg,#203a5e,#2a5080);color:#fff;font-size:15px;font-weight:650;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(32,58,94,.22)}
-    .btn-primary:hover{background:linear-gradient(135deg,#245380,#2a5080);transform:translateY(-1px)}
+    .btn-primary{width:100%;padding:13px 18px;border-radius:10px;border:0;background:linear-gradient(135deg,#7a4f00,#FFB300);color:#fff;font-size:15px;font-weight:650;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(255,179,0,.30)}
+    .btn-primary:hover{background:linear-gradient(135deg,#FFB300,#7a4f00);transform:translateY(-1px)}
     .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
     .alert{min-height:18px;margin:10px 0 0;color:#dc2626;font-size:13.5px;text-align:center}
     .text-center{text-align:center}
     .mt-5{margin-top:20px}
-    .font-bold{font-weight:650;color:#203a5e}
+    .font-bold{font-weight:650;color:#1a1206}
     .links{font-size:14px;color:#6b7f94}
 
     /* mobile install banner */
-    #installBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#203a5e;color:#fff;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.20)}
+    #installBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#1a1206;color:#fff;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.20)}
     #installBanner img{width:40px;height:40px;border-radius:10px;background:#fff;padding:4px}
     #installBanner .txt{flex:1}
     #installBanner .title{font-weight:650;font-size:15px}
     #installBanner .sub{font-size:12px;color:#a7c4e6}
-    #installBanner button{background:#fff;color:#203a5e;border:0;border-radius:8px;padding:8px 14px;font-weight:650;font-size:13px;cursor:pointer}
+    #installBanner button{background:#fff;color:#1a1206;border:0;border-radius:8px;padding:8px 14px;font-weight:650;font-size:13px;cursor:pointer}
     #installBanner .close{background:transparent;color:#fff;font-size:18px;padding:4px 8px;border:0;cursor:pointer}
 
     /* live panel on the right */
@@ -91,7 +91,7 @@
     @media(max-width:960px){
       #auth{grid-template-columns:1fr;display:flex;flex-direction:column}
       #auth-left{padding:32px 22px;border-right:0;order:1}
-      #auth-right{position:static;order:2;background:linear-gradient(180deg,#1c3d63 0%,#245380 100%);padding:32px 22px}
+      #auth-right{position:static;order:2;background:linear-gradient(180deg,#1a1206 0%,#3d2a08 100%);padding:32px 22px}
       .live-panel{max-width:100%}
       #auth-right::before{display:none}
     }
