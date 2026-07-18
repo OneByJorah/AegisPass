@@ -1,0 +1,642 @@
+using System.Net;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using PassReset.Common;
+using PassReset.Common.ChangeFlow;
+using PassReset.PasswordProvider;
+using PassReset.PasswordProvider.Ldap;
+using PassReset.Web.Configuration;
+using PassReset.Web.Helpers;
+using PassReset.Web.Middleware;
+using PassReset.Web.Models;
+using PassReset.Web.Services;
+using PassReset.Web.Services.Configuration;
+using PassReset.Web.Services.Hosting;
+using Serilog;
+// NoOpEmailService lives in PassReset.Web.Helpers (development no-op).
+// SmtpEmailService and PasswordExpiryNotificationService live in PassReset.Web.Services.
+
+// Bootstrap logger captures startup failures before appsettings-driven config is loaded.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("Starting PassReset");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // ─── Serilog (reads Serilog section from appsettings; enrich with HTTP context) ─
+    // preserveStaticLogger: true keeps the bootstrap logger independent of the host's
+    // pipeline logger. Required for WebApplicationFactory<Program> test re-entry —
+    // without it the static ReloadableLogger from a prior test run is "already frozen"
+    // when UseSerilog tries to replace it on the next run, producing
+    // InvalidOperationException: "The logger is already frozen."
+    builder.Host.UseSerilog(
+        (ctx, services, lc) => lc
+            .ReadFrom.Configuration(ctx.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext(),
+        preserveStaticLogger: true);
+
+    // ── Phase 14: Windows Service support ────────────────────────────────────────
+    // When the process is launched by SCM, bind to the Windows Service lifetime so
+    // Start/Stop/Restart flow through SCM. When launched from console (IIS or dev),
+    // this is a no-op: WindowsServiceHelpers.IsWindowsService() returns false and
+    // the host uses the default console lifetime.
+    builder.Host.UseWindowsService(options =>
+    {
+        options.ServiceName = "PassReset";
+    });
+
+    // ── Phase 14: Hosting mode detection (used by KestrelHttpsCertOptionsValidator) ─
+    var hostingModeDetector = new HostingModeDetector();
+    var hostingMode = hostingModeDetector.Detect();
+    builder.Services.AddSingleton(hostingModeDetector);
+
+    // ─── Configuration — AddOptions<T>().Bind().ValidateOnStart() per D-07 ────────
+    // Each validator is registered adjacent to its AddOptions call so failure surfaces
+    // as OptionsValidationException at DI build → StartupValidationFailureLogger writes
+    // to the Windows Application Event Log under source 'PassReset' before IIS returns 502.
+    builder.Services.AddOptions<ClientSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(ClientSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<ClientSettings>, ClientSettingsValidator>();
+
+    builder.Services.AddOptions<WebSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(WebSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<WebSettings>, WebSettingsValidator>();
+
+    builder.Services.AddOptions<SmtpSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(SmtpSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<SmtpSettings>, SmtpSettingsValidator>();
+
+    builder.Services.AddOptions<EmailNotificationSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(EmailNotificationSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<EmailNotificationSettings>, EmailNotificationSettingsValidator>();
+
+    builder.Services.AddOptions<PasswordExpiryNotificationSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(PasswordExpiryNotificationSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<PasswordExpiryNotificationSettings>, PasswordExpiryNotificationSettingsValidator>();
+
+    builder.Services.AddOptions<SiemSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(SiemSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<SiemSettings>, SiemSettingsValidator>();
+
+    builder.Services.AddOptions<PasswordChangeOptions>()
+        .Bind(builder.Configuration.GetSection(nameof(PasswordChangeOptions)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<PasswordChangeOptions>, PasswordChangeOptionsValidator>();
+
+    builder.Services.AddOptions<HealthCheckSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(HealthCheckSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<HealthCheckSettings>, HealthCheckSettingsValidator>();
+
+    builder.Services.AddOptions<AdminSettings>()
+        .Bind(builder.Configuration.GetSection(nameof(AdminSettings)))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<AdminSettings>, AdminSettingsValidator>();
+
+    var adminSettings = builder.Configuration
+        .GetSection(nameof(AdminSettings))
+        .Get<AdminSettings>() ?? new AdminSettings();
+
+    builder.Services.AddOptions<KestrelHttpsCertOptions>()
+        .Bind(builder.Configuration.GetSection("Kestrel:HttpsCert"))
+        .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<KestrelHttpsCertOptions>>(
+        new KestrelHttpsCertOptionsValidator(() => hostingMode));
+
+    var kestrelHttpsCert = builder.Configuration
+        .GetSection("Kestrel:HttpsCert")
+        .Get<KestrelHttpsCertOptions>() ?? new KestrelHttpsCertOptions();
+
+    // ─── PwnedPasswordChecker — HttpClient injected via IHttpClientFactory ─────
+    // Registered against both the concrete type (for PasswordChangeProvider's existing
+    // constructor dependency) and the IPwnedPasswordChecker interface (for the new
+    // pwned-check controller endpoint — FEAT-004).
+    // Phase 12: pass disabled=true when LocalPwnedPasswordsPath is configured so the
+    // remote HIBP API is not called when a local corpus is authoritative.
+    builder.Services.AddHttpClient("pwned", c =>
+    {
+        c.BaseAddress = new Uri("https://api.pwnedpasswords.com/");
+        c.Timeout = TimeSpan.FromSeconds(5);
+    });
+
+    // STAB-014: reCAPTCHA v3 verification client. Typed client so IRecaptchaVerifier is
+    // resolved directly from DI; PooledConnectionLifetime via the factory respects DNS changes.
+    builder.Services.AddHttpClient<IRecaptchaVerifier, GoogleRecaptchaVerifier>(c =>
+    {
+        c.BaseAddress = new Uri("https://www.google.com/");
+        c.Timeout = TimeSpan.FromSeconds(10);
+    });
+    builder.Services.AddSingleton<PwnedPasswordChecker>(sp =>
+    {
+        var opts = sp.GetRequiredService<IOptions<PasswordChangeOptions>>().Value;
+        var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("pwned");
+        var logger = sp.GetRequiredService<ILogger<PwnedPasswordChecker>>();
+        var disabled = !string.IsNullOrWhiteSpace(opts.LocalPolicy?.LocalPwnedPasswordsPath);
+        return new PwnedPasswordChecker(http, logger, disabled: disabled);
+    });
+    builder.Services.AddTransient<IPwnedPasswordChecker>(sp =>
+        sp.GetRequiredService<PwnedPasswordChecker>());
+
+    // ─── Phase 13: Admin UI + encrypted secret storage ────────────────────────────
+    var dpKeyPath = adminSettings.KeyStorePath
+        ?? Path.Combine(AppContext.BaseDirectory, "keys");
+    Directory.CreateDirectory(dpKeyPath);
+
+    var dpBuilder = builder.Services.AddDataProtection()
+        .SetApplicationName("PassReset")
+        .PersistKeysToFileSystem(new DirectoryInfo(dpKeyPath));
+
+    if (OperatingSystem.IsWindows())
+    {
+#pragma warning disable CA1416 // Windows-only API; runtime-guarded above
+        dpBuilder.ProtectKeysWithDpapi();
+#pragma warning restore CA1416
+    }
+    else if (!string.IsNullOrWhiteSpace(adminSettings.DataProtectionCertThumbprint))
+    {
+        dpBuilder.ProtectKeysWithCertificate(adminSettings.DataProtectionCertThumbprint);
+    }
+
+    var secretsPath = adminSettings.SecretsFilePath
+        ?? Path.Combine(AppContext.BaseDirectory, "secrets.dat");
+
+    builder.Services.AddSingleton<IConfigProtector, ConfigProtector>();
+    builder.Services.AddSingleton<ISecretStore>(sp => new SecretStore(
+        sp.GetRequiredService<IConfigProtector>(),
+        secretsPath,
+        sp.GetRequiredService<ILogger<SecretStore>>()));
+
+    var appSettingsPath = adminSettings.AppSettingsFilePath
+        ?? Path.Combine(AppContext.BaseDirectory, "appsettings.Production.json");
+    builder.Services.AddSingleton<IAppSettingsEditor>(_ => new AppSettingsEditor(appSettingsPath));
+
+    builder.Services.AddSingleton<IProcessRunner, DefaultProcessRunner>();
+
+    // SecretConfigurationProvider must be added to Configuration BEFORE env vars
+    // so STAB-017 env-var overrides still win.
+    // IMPORTANT: at this point builder.Configuration already has the default sources
+    // including env vars. We re-add env vars AFTER the secret source to preserve precedence.
+    var tempDpServices = new ServiceCollection();
+    tempDpServices.AddDataProtection()
+        .SetApplicationName("PassReset")
+        .PersistKeysToFileSystem(new DirectoryInfo(dpKeyPath));
+    if (OperatingSystem.IsWindows())
+    {
+#pragma warning disable CA1416
+        tempDpServices.AddDataProtection().ProtectKeysWithDpapi();
+#pragma warning restore CA1416
+    }
+    using var tempDpSp = tempDpServices.BuildServiceProvider();
+    var bootstrapProtector = new ConfigProtector(tempDpSp.GetRequiredService<IDataProtectionProvider>());
+    var bootstrapLogger = LoggerFactory.Create(lb => lb.AddSerilog(dispose: false)).CreateLogger<SecretStore>();
+
+    ((IConfigurationBuilder)builder.Configuration).Add(new SecretConfigurationSource(
+        () => new SecretStore(bootstrapProtector, secretsPath, bootstrapLogger)));
+
+    // Re-add environment variables AFTER the secret source so they retain precedence.
+    builder.Configuration.AddEnvironmentVariables();
+
+    // Razor Pages for the admin UI — only registered when the admin feature is opt-in
+    // enabled, so a future refactor that calls MapRazorPages() unconditionally can't
+    // accidentally expose /admin/* on the public listener. Each admin page declares
+    // an explicit `@page "/admin/..."` route to avoid relying on area discovery.
+    if (adminSettings.Enabled)
+    {
+        builder.Services.AddRazorPages();
+    }
+
+    // ─── Provider registration (runtime config flag, no compile-time conditionals) ─
+    var webSettings = builder.Configuration
+        .GetSection(nameof(WebSettings))
+        .Get<WebSettings>() ?? new WebSettings();
+
+    var expirySettings = builder.Configuration
+        .GetSection(nameof(PasswordExpiryNotificationSettings))
+        .Get<PasswordExpiryNotificationSettings>() ?? new PasswordExpiryNotificationSettings();
+
+    // ─── Startup configuration validation — abort on Error, warn on Warning ──
+    var smtpSettings = builder.Configuration
+        .GetSection(nameof(SmtpSettings))
+        .Get<SmtpSettings>() ?? new SmtpSettings();
+    var emailNotifSettings = builder.Configuration
+        .GetSection(nameof(EmailNotificationSettings))
+        .Get<EmailNotificationSettings>() ?? new EmailNotificationSettings();
+    var clientSettings = builder.Configuration
+        .GetSection(nameof(ClientSettings))
+        .Get<ClientSettings>() ?? new ClientSettings();
+    var passwordChangeOptions = builder.Configuration
+        .GetSection(nameof(PasswordChangeOptions))
+        .Get<PasswordChangeOptions>() ?? new PasswordChangeOptions();
+
+    // ERROR — abort startup
+    if (webSettings.UseDebugProvider && !builder.Environment.IsDevelopment())
+        throw new InvalidOperationException(
+            "WebSettings.UseDebugProvider is true but Environment is not 'Development'. " +
+            "Set UseDebugProvider to false or run in the Development environment.");
+
+    if (clientSettings.Recaptcha?.Enabled == true
+        && string.IsNullOrWhiteSpace(clientSettings.Recaptcha.PrivateKey))
+        throw new InvalidOperationException(
+            "Recaptcha.Enabled is true but Recaptcha.PrivateKey is empty. " +
+            "Provide a valid reCAPTCHA private key or disable reCAPTCHA.");
+
+    // WARNING — log and continue
+    if (emailNotifSettings.Enabled && string.IsNullOrWhiteSpace(smtpSettings.Host))
+        Log.Warning(
+            "EmailNotificationSettings.Enabled is true but SmtpSettings.Host is empty. " +
+            "Password-changed notification emails will be silently discarded.");
+
+    if (expirySettings.Enabled && string.IsNullOrWhiteSpace(smtpSettings.Host))
+        Log.Warning(
+            "PasswordExpiryNotificationSettings.Enabled is true but SmtpSettings.Host is empty. " +
+            "Expiry notification emails will be silently discarded.");
+
+    if (passwordChangeOptions.PortalLockoutThreshold >= 10)
+        Log.Warning(
+            "PortalLockoutThreshold is {Threshold} (>= 10). This is unusually high and may indicate a misconfiguration. Typical values are 3-5.",
+            passwordChangeOptions.PortalLockoutThreshold);
+
+    // Phase 11: ProviderMode-based selection (Auto | Windows | Ldap).
+    // Note: ProviderMode is captured at startup from a configuration snapshot; changing it
+    // requires an app restart. DI registrations are resolved once and will not respond to
+    // IOptionsMonitor reloads of PasswordChangeOptions.
+    var effectiveProvider = passwordChangeOptions.ProviderMode switch
+    {
+        ProviderMode.Windows => WiringTarget.Windows,
+        ProviderMode.Ldap    => WiringTarget.Ldap,
+        ProviderMode.Auto    => OperatingSystem.IsWindows() ? WiringTarget.Windows : WiringTarget.Ldap,
+        _                    => throw new InvalidOperationException(
+                                    $"Unknown PasswordChangeOptions.ProviderMode: {passwordChangeOptions.ProviderMode}"),
+    };
+
+    // Phase 11 + Candidate 3: each branch records only what DIFFERS — its concrete adapter
+    // type and its branch-specific companions (email, AD probe, session/context factory).
+    // The shared wiring (lockout decorator, seam mapping, expiry) is registered ONCE below.
+    Type adapterType;
+
+    if (webSettings.UseDebugProvider)
+    {
+        builder.Services.AddSingleton<DebugPasswordChangeProvider>();
+        adapterType = typeof(DebugPasswordChangeProvider);
+        builder.Services.AddSingleton<IEmailService, NoOpEmailService>();
+        // Health probe — LDAP TCP probe is cross-platform; returns NotConfigured when LdapHostnames empty.
+        builder.Services.AddSingleton<IAdConnectivityProbe, LdapTcpProbe>();
+    }
+    else if (effectiveProvider == WiringTarget.Ldap)
+    {
+        // Session factory per password-change request (no pooling — low frequency).
+        builder.Services.AddSingleton<Func<ILdapSession>>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptions<PasswordChangeOptions>>().Value;
+            // Belt-and-suspenders: PasswordChangeOptionsValidator already enforces non-empty
+            // LdapHostnames when ProviderMode resolves to Ldap at startup. This defensive
+            // check surfaces a clear, actionable error if the options are ever reloaded
+            // into an invalid state before the factory fires.
+            if (opts.LdapHostnames is null || opts.LdapHostnames.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "PasswordChangeOptions.LdapHostnames must contain at least one hostname when ProviderMode=Ldap.");
+            }
+            var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+            return () => new LdapSession(
+                hostname: opts.LdapHostnames[0],
+                port: opts.LdapPort,
+                useLdaps: opts.LdapUseSsl,
+                serviceAccountDn: opts.ServiceAccountDn,
+                serviceAccountPassword: opts.ServiceAccountPassword,
+                trustedThumbprints: opts.LdapTrustedCertificateThumbprints,
+                logger: loggerFactory.CreateLogger<LdapSession>());
+        });
+        builder.Services.AddSingleton<LdapPasswordChangeProvider>();
+        adapterType = typeof(LdapPasswordChangeProvider);
+        builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+        // Health probe — cross-platform LDAP TCP probe.
+        builder.Services.AddSingleton<IAdConnectivityProbe, LdapTcpProbe>();
+    }
+#if WINDOWS_PROVIDER
+    else  // effectiveProvider == WiringTarget.Windows
+    {
+        builder.Services.AddSingleton<PassReset.PasswordProvider.IPrincipalContextFactory,
+                                      PassReset.PasswordProvider.DefaultPrincipalContextFactory>();
+        builder.Services.AddSingleton<PasswordChangeProvider>();
+        adapterType = typeof(PasswordChangeProvider);
+        builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+        // Health probe — Windows domain-joined PrincipalContext check.
+        builder.Services.AddSingleton<IAdConnectivityProbe, PassReset.PasswordProvider.DomainJoinedProbe>();
+    }
+#else
+    else
+    {
+        throw new InvalidOperationException(
+            "PasswordChangeOptions.ProviderMode resolved to Windows, but this build does not include the Windows provider. " +
+            "Rebuild on Windows or set ProviderMode to Ldap.");
+    }
+#endif
+
+    // ─── LocalPolicy checkers (Phase 12) ─────────────────────────────────────────
+    builder.Services.AddSingleton<PassReset.Common.LocalPolicy.BannedWordsChecker>();
+    builder.Services.AddSingleton<PassReset.Common.LocalPolicy.LocalPwnedPasswordsChecker>();
+
+    // ─── Shared provider wiring (registered ONCE, independent of the branch above) ──
+    // Lockout decorator wraps whichever concrete adapter the branch selected.
+    builder.Services.AddSingleton<LockoutPasswordChangeProvider>(sp =>
+        new LockoutPasswordChangeProvider(
+            (IPasswordChanger)sp.GetRequiredService(adapterType),
+            sp.GetRequiredService<IOptions<PasswordChangeOptions>>(),
+            sp.GetRequiredService<ILogger<LockoutPasswordChangeProvider>>()));
+
+    // Change seam: LocalPolicy( Lockout( adapter ) ) — only the credentialed write path is decorated.
+    builder.Services.AddSingleton<IPasswordChanger>(sp =>
+    {
+        var lockout = sp.GetRequiredService<LockoutPasswordChangeProvider>();
+        var banned  = sp.GetRequiredService<PassReset.Common.LocalPolicy.BannedWordsChecker>();
+        var pwned   = sp.GetRequiredService<PassReset.Common.LocalPolicy.LocalPwnedPasswordsChecker>();
+        var log     = sp.GetRequiredService<ILogger<PassReset.Common.LocalPolicy.LocalPolicyPasswordChangeProvider>>();
+        return new PassReset.Common.LocalPolicy.LocalPolicyPasswordChangeProvider(lockout, banned, pwned, log);
+    });
+
+    // Status + Directory seams: the selected adapter implements both. One centralized cast each
+    // off `adapterType` — replaces the former cross-seam downcast on the resolver's return value.
+    builder.Services.AddSingleton<IPasswordStatusReader>(sp =>
+        (IPasswordStatusReader)sp.GetRequiredService(adapterType));
+    builder.Services.AddSingleton<IDirectoryUserReader>(sp =>
+        (IDirectoryUserReader)sp.GetRequiredService(adapterType));
+
+    builder.Services.AddSingleton<ILockoutDiagnostics>(sp =>
+        sp.GetRequiredService<LockoutPasswordChangeProvider>());
+
+    // Expiry notification service — identical in every branch; depends only on the toggle.
+    RegisterExpiry(builder.Services, expirySettings.Enabled);
+
+    static void RegisterExpiry(IServiceCollection services, bool enabled)
+    {
+        if (enabled)
+        {
+            // Register as singleton so both the hosted service runtime and the health
+            // controller's IExpiryServiceDiagnostics dependency resolve the SAME instance.
+            services.AddSingleton<PasswordExpiryNotificationService>();
+            services.AddHostedService(sp => sp.GetRequiredService<PasswordExpiryNotificationService>());
+            services.AddSingleton<IExpiryServiceDiagnostics>(sp =>
+                sp.GetRequiredService<PasswordExpiryNotificationService>());
+        }
+        else
+        {
+            services.AddSingleton<IExpiryServiceDiagnostics>(new NullExpiryServiceDiagnostics());
+        }
+    }
+
+    // ─── SIEM service ─────────────────────────────────────────────────────────────
+    builder.Services.AddSingleton<ISiemService, SiemService>();
+
+    // ─── Change Flow (deep module) + its seams ───────────────────────────────────
+    builder.Services.AddSingleton<IErrorRedactor, HostEnvironmentErrorRedactor>();
+    builder.Services.AddSingleton<IChangeFlowSettings, ChangeFlowSettingsAdapter>();
+    builder.Services.AddSingleton<IChangePasswordFlow>(sp => new ChangePasswordFlow(
+        sp.GetRequiredService<IPasswordChanger>(),
+        sp.GetRequiredService<IRecaptchaVerifier>(),
+        sp.GetRequiredService<ISiemService>(),
+        sp.GetRequiredService<IErrorRedactor>(),
+        sp.GetRequiredService<IChangeFlowSettings>()));
+
+    // ─── AD password-policy cache (FEAT-002) ─────────────────────────────────────
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<PasswordPolicyCache>();
+
+    // ─── Rate limiting (built-in .NET 7+ API, no third-party dependency) ──────────
+    // Policy names used by the [EnableRateLimiting] attributes on PasswordController.
+    const string PasswordRateLimitPolicy = "password-fixed-window";
+    const string PwnedCheckRateLimitPolicy = "pwned-check-window";
+    const string StatusRateLimitPolicy = "status-fixed-window";
+
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+        options.OnRejected = (context, _) =>
+        {
+            var siem = context.HttpContext.RequestServices.GetService<ISiemService>();
+            var ip   = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            siem?.LogEvent(SiemEventType.RateLimitExceeded, "unknown", ip);
+            return ValueTask.CompletedTask;
+        };
+
+        options.AddPolicy(PasswordRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit          = 5,
+                    Window               = TimeSpan.FromMinutes(5),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit           = 0,  // no queuing — reject immediately
+                }));
+
+        // FEAT-004: dedicated policy for the blur-triggered HIBP pre-check so a
+        // user typing several candidate passwords does not exhaust the submit-time
+        // 5-per-5-min budget. 20 per 5 min is enough for realistic exploration while
+        // still throttling abuse of the server-side HIBP proxy.
+        options.AddPolicy(PwnedCheckRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit          = 20,
+                    Window               = TimeSpan.FromMinutes(5),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit           = 0,
+                }));
+
+        // v2.1: the read-only Status Check mirrors the submit-time 5-per-5-min budget but
+        // uses a SEPARATE partition key (prefixed "status:") so a burst of status checks
+        // cannot exhaust a user's password-change budget (and vice versa).
+        options.AddPolicy(StatusRateLimitPolicy, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                "status:" + (context.Connection.RemoteIpAddress?.ToString() ?? "unknown"),
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit          = 5,
+                    Window               = TimeSpan.FromMinutes(5),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit           = 0,
+                }));
+    });
+
+    // ─── MVC / API ────────────────────────────────────────────────────────────────
+    builder.Services.AddControllers();
+
+    if (adminSettings.Enabled)
+    {
+        builder.WebHost.ConfigureKestrel(opts =>
+        {
+            opts.Listen(IPAddress.Loopback, adminSettings.LoopbackPort);
+        });
+    }
+
+    // ── Phase 14: Service-mode TLS binding ───────────────────────────────────────
+    // IIS mode: the ASP.NET Core Module feeds the request via the named-pipe backend,
+    // so we don't bind a listener here. Console mode: the operator passes --urls on
+    // the command line (or leaves the default). Service mode: bind HTTPS 443 with
+    // the configured cert.
+    if (hostingMode == HostingMode.Service)
+    {
+        builder.WebHost.ConfigureKestrel(opts =>
+        {
+            if (!string.IsNullOrWhiteSpace(kestrelHttpsCert.Thumbprint))
+            {
+                var storeLocation = Enum.Parse<System.Security.Cryptography.X509Certificates.StoreLocation>(
+                    kestrelHttpsCert.StoreLocation, ignoreCase: true);
+                using var store = new System.Security.Cryptography.X509Certificates.X509Store(
+                    kestrelHttpsCert.StoreName, storeLocation);
+                store.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadOnly);
+                var cert = store.Certificates
+                    .Find(System.Security.Cryptography.X509Certificates.X509FindType.FindByThumbprint,
+                          kestrelHttpsCert.Thumbprint, validOnly: false)
+                    .OfType<System.Security.Cryptography.X509Certificates.X509Certificate2>()
+                    .FirstOrDefault()
+                    ?? throw new InvalidOperationException(
+                        $"Kestrel:HttpsCert.Thumbprint '{kestrelHttpsCert.Thumbprint}' not found in {kestrelHttpsCert.StoreLocation}/{kestrelHttpsCert.StoreName}.");
+
+                opts.Listen(IPAddress.Any, 443, listen => listen.UseHttps(cert));
+            }
+            else if (!string.IsNullOrWhiteSpace(kestrelHttpsCert.PfxPath))
+            {
+                opts.Listen(IPAddress.Any, 443, listen =>
+                    listen.UseHttps(kestrelHttpsCert.PfxPath!, kestrelHttpsCert.PfxPassword));
+            }
+        });
+    }
+
+    // ─── Build app ────────────────────────────────────────────────────────────────
+    var app = builder.Build();
+
+    Log.Information(
+        "PassReset starting. HostingMode: {HostingMode}. Process: {Process}. Endpoint: {Urls}.",
+        hostingMode,
+        System.Diagnostics.Process.GetCurrentProcess().ProcessName,
+        string.Join(", ", app.Urls.DefaultIfEmpty("(not yet bound)")));
+
+    // ─── Request logging — one structured line per HTTP request ───────────────────
+    app.UseSerilogRequestLogging();
+
+    // ─── TraceId / SpanId enrichment — pushes W3C Activity identifiers onto
+    //     Serilog's LogContext so every downstream log event correlates per request.
+    app.UseMiddleware<TraceIdEnricherMiddleware>();
+
+    // ─── Security headers — applied to every response before any other middleware ─
+    app.Use(async (context, next) =>
+    {
+        var runtimeWeb = context.RequestServices.GetRequiredService<IOptions<WebSettings>>().Value;
+        var headers = context.Response.Headers;
+        headers["X-Frame-Options"]         = "DENY";
+        headers["X-Content-Type-Options"]  = "nosniff";
+        headers["Referrer-Policy"]         = "strict-origin-when-cross-origin";
+        headers["Permissions-Policy"]      = "geolocation=(), microphone=(), camera=()";
+        headers["Content-Security-Policy"] =
+            "default-src 'self'; " +
+            "script-src 'self' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/; " +
+            "img-src 'self' data:; " +
+            "connect-src 'self'; " +
+            "base-uri 'self'; " +
+            "form-action 'self'; " +
+            "object-src 'none'";
+
+        if (runtimeWeb.EnableHttpsRedirect)
+            headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+
+        await next(context);
+    });
+
+    // ─── HTTPS redirect ───────────────────────────────────────────────────────────
+    if (webSettings.EnableHttpsRedirect)
+        app.UseHttpsRedirection();
+
+    // ─── Static files and routing ─────────────────────────────────────────────────
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+
+    // ─── Operator branding assets (FEAT-001) ─────────────────────────────────────
+    // Served from C:\ProgramData\PassReset\brand\ by default — upgrade-safe path
+    // owned by the operator, not by the app deploy directory.
+    var brandRoot = clientSettings.Branding?.AssetRoot
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "PassReset", "brand");
+    Directory.CreateDirectory(brandRoot);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(brandRoot),
+        RequestPath = "/brand",
+        ServeUnknownFileTypes = false,
+    });
+
+    app.UseRouting();
+
+    // ─── Rate limiting — must come after UseRouting so endpoint metadata is resolved ─
+    app.UseRateLimiter();
+
+    if (adminSettings.Enabled)
+    {
+        // Route /admin/* requests through the loopback guard then into Razor Pages.
+        // Security relies on three layers: (1) Kestrel binds the admin listener to
+        // 127.0.0.1 only, (2) LoopbackOnlyGuardMiddleware rejects any non-loopback
+        // remote IP, (3) the guard middleware 404s any request that arrived via the
+        // wrong socket.
+        // MapRazorPages is called on the outer endpoint builder (after UseRouting)
+        // so WebApplicationFactory's TestServer endpoint graph is populated correctly.
+        // The loopback guard is applied via a convention on every /admin/* endpoint.
+        app.UseWhen(
+            ctx => ctx.Request.Path.StartsWithSegments("/admin"),
+            admin => admin.UseMiddleware<PassReset.Web.Middleware.LoopbackOnlyGuardMiddleware>());
+        app.MapRazorPages();
+    }
+
+    app.MapControllers();
+
+    // SPA fallback — serves index.html for non-API, non-file routes so deep links work.
+    app.MapFallbackToFile("index.html");
+
+    app.Run();
+    return 0;
+}
+catch (OptionsValidationException ex)
+{
+    // D-07: operator-actionable diagnosis path for misconfigured appsettings.
+    // Write to Windows Application Event Log (source 'PassReset') so operators see
+    // the validation failure in Event Viewer, not just a bare IIS 502. Source
+    // registration is owned by Install-PassReset.ps1 (plan 08-04); missing source
+    // is silently swallowed inside the helper. After logging, re-throw so the
+    // ASP.NET Core module / WebApplicationFactory observes the original failure.
+    StartupValidationFailureLogger.LogToEventLog(ex);
+    Log.Fatal(ex, "PassReset configuration validation failed at startup: {Failures}",
+        string.Join(" | ", ex.Failures ?? []));
+    throw;
+}
+// NOTE: Do NOT add a broad `catch (Exception)` or a `finally { Log.CloseAndFlush(); }`
+// here. WebApplicationFactory<Program> / HostFactoryResolver re-enters this top-level
+// program across multiple tests in a single process and signals its handoff with an
+// internal exception (StopTheHostException) that MUST propagate. A broad catch swallows
+// that signal and breaks subsequent tests with "entry point exited without ever building
+// an IHost". The host owns Serilog's lifetime via UseSerilog(); the process shutdown
+// path flushes the logger — we do not need CloseAndFlush here.
+
+// Marker type to allow WebApplicationFactory<Program> in test projects.
+// Top-level programs generate an internal Program class; this makes it public.
+public partial class Program { }
+
+// Phase 11: compile-time wiring target resolved from PasswordChangeOptions.ProviderMode.
+internal enum WiringTarget { Windows, Ldap }

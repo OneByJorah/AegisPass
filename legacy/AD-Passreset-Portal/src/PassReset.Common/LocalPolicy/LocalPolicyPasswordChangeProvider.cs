@@ -1,0 +1,53 @@
+using Microsoft.Extensions.Logging;
+
+namespace PassReset.Common.LocalPolicy;
+
+/// <summary>
+/// Decorator around <see cref="IPasswordChanger"/> that enforces operator-managed
+/// local password policy: banned-words substring match and offline HIBP SHA-1 lookup.
+/// Both checks run before any AD round-trip. Rejections never log the banned term or
+/// attempted password.
+/// </summary>
+public sealed class LocalPolicyPasswordChangeProvider : IPasswordChanger
+{
+    private readonly IPasswordChanger _inner;
+    private readonly BannedWordsChecker _banned;
+    private readonly LocalPwnedPasswordsChecker _pwned;
+    private readonly ILogger<LocalPolicyPasswordChangeProvider> _log;
+
+    public LocalPolicyPasswordChangeProvider(
+        IPasswordChanger inner,
+        BannedWordsChecker banned,
+        LocalPwnedPasswordsChecker pwned,
+        ILogger<LocalPolicyPasswordChangeProvider> log)
+    {
+        _inner = inner;
+        _banned = banned;
+        _pwned = pwned;
+        _log = log;
+    }
+
+    public async Task<ApiErrorItem?> PerformPasswordChangeAsync(
+        string username, string currentPassword, string newPassword)
+    {
+        if (_banned.Matches(newPassword))
+        {
+            _log.LogInformation(
+                "Banned-word rejection for {Username} (term redacted)", username);
+            return new ApiErrorItem(ApiErrorCode.BannedWord,
+                "This password is not allowed by local policy.")
+            { FieldName = nameof(newPassword) };
+        }
+
+        if (await _pwned.ContainsAsync(newPassword))
+        {
+            _log.LogInformation(
+                "Local-pwned rejection for {Username}", username);
+            return new ApiErrorItem(ApiErrorCode.LocallyKnownPwned,
+                "This password is not allowed by local policy.")
+            { FieldName = nameof(newPassword) };
+        }
+
+        return await _inner.PerformPasswordChangeAsync(username, currentPassword, newPassword);
+    }
+}

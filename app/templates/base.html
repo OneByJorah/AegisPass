@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ app_name | default('AegisPass') }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
+  <link rel="icon" href="{{ url_for('static', filename='brand/favicon.png') }}">
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">
+          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass">
+        </div>
+        <div>
+          <div class="name">{{ company | default('AegisPass') }}</div>
+          <div class="sub">{{ app_name | default('AD Manager') }}</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav">
+        <a data-view="dashboard" class="active"><span class="ico">▦</span><span class="label">Dashboard</span></a>
+        <div class="nav-section">Directory</div>
+        <a data-view="users"><span class="ico">👤</span><span class="label">Users</span></a>
+        <a data-view="groups"><span class="ico">👥</span><span class="label">Groups</span></a>
+        <a data-view="ous"><span class="ico">🗂</span><span class="label">OUs</span></a>
+        <a data-view="audit" id="nav-audit" style="display:none"><span class="ico">🛡</span><span class="label">Audit log</span></a>
+        <div class="nav-section">Self-service</div>
+        <a data-view="self"><span class="ico">🔑</span><span class="label">My password</span></a>
+        <a data-view="enroll"><span class="ico">🪪</span><span class="label">Enrollment</span></a>
+        <a data-view="admin" id="nav-admin" style="display:none"><span class="ico">⚙</span><span class="label">Administration</span><span class="badge">DA</span></a>
+        <a data-view="workflows" id="nav-workflows" style="display:none"><span class="ico">🤖</span><span class="label">Workflows</span><span class="badge">DA</span></a>
+      </nav>
+      <div class="side-foot">
+        <div class="who" id="sideWho">—</div>
+        <div class="role" id="sideRole"></div>
+        <a class="btn-ghost" href="{{ url_for('auth.logout') }}">Sign out</a>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn" id="toggleSide" title="Toggle sidebar">☰</button>
+        <div class="crumb" id="crumb"><b>Dashboard</b></div>
+        <div class="spacer"></div>
+        <div class="searchbar" id="openPalette">
+          <span>🔎</span><input placeholder="Search people, groups, actions…" readonly>
+          <span class="kbd">⌘K</span>
+        </div>
+        <button class="icon-btn" id="statusBtn" title="Directory status">🟢</button>
+      </header>
+      <main class="content" id="view"></main>
+      <footer class="app-foot">
+        Built with passion for <b>AegisPass</b> by <b>Jhonattan L. Jimenez</b>
+      </footer>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+  <div class="palette" id="palette">
+    <div class="box">
+      <input id="paletteInput" placeholder="Type a command or name…" autocomplete="off">
+      <div class="results" id="paletteResults"></div>
+    </div>
+  </div>
+  <div class="toasts" id="toasts"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}?v=5"></script>
+  <script>
+    BOOT({
+      sso: {{ sso_available|default(false)|tojson }},
+      is_admin: {{ is_admin|default(false)|tojson }},
+      user: {{ user|default({})|tojson }},
+      company: {{ company|default('AegisPass')|tojson }},
+      app_name: {{ app_name|default('AD Manager')|tojson }}
+    });
+  </script>
+</body>
+</html>

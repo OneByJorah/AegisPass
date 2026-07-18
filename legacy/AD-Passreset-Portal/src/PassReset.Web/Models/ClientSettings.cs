@@ -1,0 +1,106 @@
+using System.Text.Json.Serialization;
+
+namespace PassReset.Web.Models;
+
+/// <summary>
+/// Represents all of the strongly-typed application settings exposed to the client.
+/// </summary>
+public class ClientSettings
+{
+    public Alerts? Alerts { get; set; }
+    public bool UsePasswordGeneration { get; set; }
+    public int MinimumDistance { get; set; }
+    public int PasswordEntropy { get; set; }
+    public int MinimumScore { get; set; }
+    public bool ShowPasswordMeter { get; set; }
+    public bool UseEmail { get; set; }
+    public string[] AllowedUsernameAttributes { get; set; } = [];
+    public ChangePasswordForm? ChangePasswordForm { get; set; }
+    public ErrorsPasswordForm? ErrorsPasswordForm { get; set; }
+    public Recaptcha? Recaptcha { get; set; }
+    public string? ApplicationTitle { get; set; }
+    public string? ChangePasswordTitle { get; set; }
+    public ValidationRegex? ValidationRegex { get; set; }
+    public BrandingSettings? Branding { get; set; }
+
+    /// <summary>Display the effective AD password policy above the form. Default true (STAB-021).</summary>
+    public bool ShowAdPasswordPolicy { get; set; } = true;
+
+    /// <summary>
+    /// Seconds after generator copy before clipboard is auto-cleared (only if content still matches). 0 disables. Default 30.
+    /// </summary>
+    public int ClipboardClearSeconds { get; set; } = 30;
+}
+
+public sealed class BrandingSettings
+{
+    public string? CompanyName { get; set; }
+    public string? PortalName { get; set; }
+    public string? HelpdeskUrl { get; set; }
+    public string? HelpdeskEmail { get; set; }
+    public string? UsageText { get; set; }
+    public string? LogoFileName { get; set; }
+    public string? FaviconFileName { get; set; }
+    public string? AssetRoot { get; set; }
+}
+
+public class Recaptcha
+{
+    public bool Enabled { get; set; }
+    public string? LanguageCode { get; set; }
+    public string? SiteKey { get; set; }
+
+    [JsonIgnore]
+    public string? PrivateKey { get; set; }
+
+    /// <summary>
+    /// When true, reCAPTCHA service unavailability (network error, timeout) allows the request through.
+    /// Low reCAPTCHA scores always reject regardless of this setting.
+    /// Default: false.
+    /// </summary>
+    [JsonIgnore]
+    public bool FailOpenOnUnavailable { get; set; }
+
+    /// <summary>
+    /// Minimum reCAPTCHA v3 score (0.0–1.0) to accept as human. Default: 0.5.
+    /// </summary>
+    [JsonIgnore]
+    public float ScoreThreshold { get; set; } = 0.5f;
+}
+
+public class Alerts
+{
+    public string? ErrorInvalidCredentials { get; set; }
+    public string? ErrorInvalidDomain { get; set; }
+    public string? ErrorPasswordChangeNotAllowed { get; set; }
+    public string? SuccessAlertBody { get; set; }
+    public string? SuccessAlertTitle { get; set; }
+    public string? ErrorInvalidUser { get; set; }
+    public string? ErrorCaptcha { get; set; }
+    public string? ErrorFieldRequired { get; set; }
+    public string? ErrorFieldMismatch { get; set; }
+    public string? ErrorComplexPassword { get; set; }
+    public string? ErrorConnectionLdap { get; set; }
+    public string? ErrorScorePassword { get; set; }
+    public string? ErrorDistancePassword { get; set; }
+    public string? ErrorPwnedPassword { get; set; }
+    public string? ErrorPasswordTooYoung { get; set; }
+    public string? ErrorRateLimitExceeded { get; set; }
+    public string? ErrorPwnedPasswordCheckFailed { get; set; }
+    public string? ErrorPortalLockout { get; set; }
+    public string? ErrorApproachingLockout { get; set; }
+}
+
+public class ErrorsPasswordForm
+{
+    public string? FieldRequired { get; set; }
+    public string? PasswordMatch { get; set; }
+    public string? UsernameEmailPattern { get; set; }
+    public string? UsernamePattern { get; set; }
+}
+
+public class ValidationRegex
+{
+    public string? EmailRegex { get; set; }
+    public string? UsernameRegex { get; set; }
+}

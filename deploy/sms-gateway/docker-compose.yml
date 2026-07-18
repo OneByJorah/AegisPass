@@ -1,0 +1,25 @@
+# docker-compose for a self-hosted SMS gateway (Gammu + REST API)
+#
+# Bring up with:  docker compose up -d
+# API:  POST http://localhost:8080/messages  { "text": "...", "recipients": ["+1..."] }
+#
+# The modem device path may differ; check `ls /dev/ttyUSB*` after plugging in.
+# Persist the Gammu phonebook/inbox with the ./gammu-state volume.
+
+services:
+  sms-gateway:
+    image: pajikos/sms-gammu-gateway:latest
+    container_name: aegispass-sms-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Point at your USB modem. Common: /dev/ttyUSB0 or /dev/ttyACM0
+      - MODEM_DEVICE=/dev/ttyUSB0
+      - GAMMU_CONFIG_PATH=/etc/gammu/gammurc
+      # Optional: protect the API with a token (set SMS_API_TOKEN in app .env)
+      # - API_TOKEN=change-me
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    volumes:
+      - ./gammu-state:/var/spool/gammu

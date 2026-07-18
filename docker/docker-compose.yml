@@ -1,0 +1,38 @@
+# aegispass — docker-compose
+#
+# Builds the app image and runs gunicorn on 0.0.0.0:8000 inside the container.
+# Only the HTTP port is published to the host; the app makes OUTBOUND LDAPS
+# (636) and Global Catalog (3268) connections to the domain controller itself,
+# so those ports are intentionally NOT published here.
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose logs -f app
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aegispass:latest
+    container_name: aegispass
+    hostname: aegispass
+
+    # Secrets / config are injected from the gitignored .env (python-dotenv
+    # also reads it from the working dir, but env_file makes them explicit).
+    env_file:
+      - .env
+
+    # Only the web port is exposed. Do NOT add "636:636" or "3268:3268" —
+    # the app dials out to the DC; it does not need inbound LDAPS/GC ports.
+    ports:
+      - "8000:8000"
+
+    restart: unless-stopped
+
+    # Keep stdout/stderr attached so `docker compose logs` shows gunicorn output.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

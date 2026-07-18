@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AegisPass Self Service</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#203a5e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AegisPass SelfService">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/viseal.png') }}">
+  <style>
+    :root{ --brand:#203a5e; --brand-2:#245380; --ok:#22c55e; --warn:#f59e0b; --off:#94a3b8; }
+    html,body{height:100%;margin:0;background:#f2f6fb;color:#1a2436;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+    #auth{min-height:100%;display:grid;grid-template-columns:minmax(0,480px) 1fr}
+    #auth-left{background:linear-gradient(180deg,#ffffff 0%,#f7fafd 100%);border-right:1px solid #e6edf5;padding:36px 40px 48px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:0}
+    #auth-right{background:url('{{ url_for('static', filename='brand/background.png') }}') center/cover no-repeat,linear-gradient(135deg,#1c3d63 0%,#245380 100%);background-blend-mode:overlay;min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px;position:relative;overflow:hidden}
+    #auth-right::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 70% 20%, rgba(255,255,255,.14) 0%, transparent 45%);pointer-events:none}
+
+    /* Animated centered logo */
+    .logo-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:28px;animation:float 4.5s ease-in-out infinite}
+    .logo-wrap img{height:120px;width:auto;display:block;filter:drop-shadow(0 16px 40px rgba(32,58,94,.25));animation:glow 2.8s ease-in-out infinite alternate}
+    .logo-ring{width:150px;height:150px;border-radius:50%;border:2px solid rgba(32,58,94,.10);position:absolute;animation:ripple 2.8s ease-out infinite}
+    .logo-ring:nth-child(2){animation-delay:.9s}
+    .logo-ring:nth-child(3){animation-delay:1.8s}
+    .logo-outer{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    @keyframes glow{0%{filter:drop-shadow(0 10px 30px rgba(32,58,94,.20))}100%{filter:drop-shadow(0 18px 50px rgba(32,58,94,.40))}}
+    @keyframes ripple{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.2);opacity:0}}
+
+    .auth-title{margin:6px 0 0;font-size:26px;font-weight:750;color:#203a5e;letter-spacing:-.3px}
+    .auth-subtitle{color:#5a7089;margin:6px 0 26px;font-size:15px}
+
+    .form-wrap{width:100%;max-width:340px;text-align:left}
+    .form-group{position:relative;margin-bottom:14px}
+    .form-control{display:block;width:100%;padding:13px 14px 13px 46px;font-size:15px;color:#1f2b3a;background:#fff;border:1px solid #d6e2f0;border-radius:10px;outline:none;transition:.15s}
+    .form-control:focus{border-color:#203a5e;box-shadow:0 0 0 3px rgba(32,58,94,.18)}
+    .form-control-icon{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#8aa0ba;font-size:16px;display:grid;place-items:center}
+    .btn-primary{width:100%;padding:13px 18px;border-radius:10px;border:0;background:linear-gradient(135deg,#203a5e,#2a5080);color:#fff;font-size:15px;font-weight:650;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(32,58,94,.22)}
+    .btn-primary:hover{background:linear-gradient(135deg,#245380,#2a5080);transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.6;cursor:default;transform:none}
+    .alert{min-height:18px;margin:10px 0 0;color:#dc2626;font-size:13.5px;text-align:center}
+    .text-center{text-align:center}
+    .mt-5{margin-top:20px}
+    .font-bold{font-weight:650;color:#203a5e}
+    .links{font-size:14px;color:#6b7f94}
+
+    /* mobile install banner */
+    #installBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;background:#203a5e;color:#fff;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,.20)}
+    #installBanner img{width:40px;height:40px;border-radius:10px;background:#fff;padding:4px}
+    #installBanner .txt{flex:1}
+    #installBanner .title{font-weight:650;font-size:15px}
+    #installBanner .sub{font-size:12px;color:#a7c4e6}
+    #installBanner button{background:#fff;color:#203a5e;border:0;border-radius:8px;padding:8px 14px;font-weight:650;font-size:13px;cursor:pointer}
+    #installBanner .close{background:transparent;color:#fff;font-size:18px;padding:4px 8px;border:0;cursor:pointer}
+
+    /* live panel on the right */
+    .live-panel{width:100%;max-width:460px;background:rgba(255,255,255,.11);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.20);border-radius:22px;padding:28px;color:#fff;position:relative;z-index:1;box-shadow:0 25px 60px rgba(0,0,0,.25)}
+    .live-panel h2{margin:0 0 4px;font-size:22px;font-weight:700}
+    .live-panel .sub{color:#cfe0f8;font-size:13px;margin-bottom:18px}
+    .svc-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(34,197,94,.18);color:#a7f3d0;font-size:12px;font-weight:650;margin-bottom:18px;border:1px solid rgba(34,197,94,.30)}
+    .svc-badge.warn{background:rgba(245,158,11,.18);color:#fde68a;border-color:rgba(245,158,11,.30)}
+    .svc-card{display:flex;align-items:center;gap:14px;padding:14px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);margin-bottom:12px;transition:.15s}
+    .svc-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:rgba(34,197,94,.20);color:#a7f3d0;flex:0 0 auto}
+    .svc-ico.warn{background:rgba(245,158,11,.18);color:#fde68a}
+    .svc-ico.off{background:rgba(148,163,184,.18);color:#e2e8f0}
+    .svc-info{flex:1}
+    .svc-info .name{font-weight:650;font-size:14.5px;margin-bottom:2px}
+    .svc-info .state{font-size:12px;color:#a7f3d0;font-weight:600;margin-bottom:2px}
+    .svc-info .detail{font-size:12px;color:#a7c4e6}
+    .svc-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .lat-row{margin-top:16px}
+    .lat-label{display:flex;justify-content:space-between;font-size:12px;color:#cfe0f8;margin-bottom:6px}
+    .lat-bar{width:100%;height:8px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+    .lat-bar span{display:block;height:100%;border-radius:4px;transition:width .6s ease}
+    .lat-val{font-weight:700;font-size:14px;color:#fff}
+    .live-time{font-size:11px;color:#8fb3d8;text-align:right;margin-top:14px}
+    .live-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+    .live-stat{background:rgba(255,255,255,.08);border-radius:12px;padding:14px;text-align:center}
+    .live-stat .num{font-size:22px;font-weight:800}
+    .live-stat .lbl{font-size:11px;color:#a7c4e6;text-transform:uppercase;letter-spacing:.8px}
+
+    .live-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+    .live-row:last-child{border-bottom:0}
+    .live-ico{width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-size:18px;flex:0 0 auto}
+    .live-pulse{width:10px;height:10px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(34,197,94,.7);animation:pulse 1.8s infinite}
+    @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 10px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+
+    @media(max-width:960px){
+      #auth{grid-template-columns:1fr;display:flex;flex-direction:column}
+      #auth-left{padding:32px 22px;border-right:0;order:1}
+      #auth-right{position:static;order:2;background:linear-gradient(180deg,#1c3d63 0%,#245380 100%);padding:32px 22px}
+      .live-panel{max-width:100%}
+      #auth-right::before{display:none}
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile install banner -->
+  <div id="installBanner">
+    <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass">
+    <div class="txt">
+      <div class="title">Install AegisPass SelfService</div>
+      <div class="sub">Add this web app to your home screen for quick access.</div>
+    </div>
+    <button onclick="doInstall()">Install</button>
+    <button class="close" onclick="hideInstallBanner()">×</button>
+  </div>
+
+  <div id="auth">
+    <div id="auth-left">
+      <div class="logo-wrap">
+        <div class="logo-outer">
+          <div class="logo-ring"></div>
+          <div class="logo-ring"></div>
+          <div class="logo-ring"></div>
+          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass Seal">
+        </div>
+        <h1 class="auth-title"><strong>Password</strong> SelfService</h1>
+        <p class="auth-subtitle">Enter your AegisPass username to login</p>
+      </div>
+
+      <div class="form-wrap">
+        <form id="login-form" autocomplete="off">
+          <div class="form-group position-relative">
+            <input id="username" type="text" class="form-control" placeholder="Username" autocomplete="username">
+            <div class="form-control-icon">👤</div>
+          </div>
+          <div class="form-group position-relative">
+            <input id="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password">
+            <div class="form-control-icon">🔒</div>
+          </div>
+          <button type="submit" id="login" class="btn-primary">Sign in</button>
+          <p id="alert" class="alert" role="alert"></p>
+        </form>
+
+        <div class="text-center mt-5 links">
+          <a id="forgot" class="font-bold" href="/recover.php">Forgot password?</a>
+          &nbsp;·&nbsp;
+          <a id="enroll" class="font-bold" href="/app#enroll">Enroll</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right side: live services status panel -->
+    <div id="auth-right">
+      <div class="live-panel" id="livePanel">
+        <h2>Services status</h2>
+        <p class="sub">Live directory health and response metrics.</p>
+        <div class="svc-badge" id="svcBadge"><span class="live-pulse"></span>All systems operational</div>
+
+        <div class="svc-cards">
+          <div class="svc-card" id="dirCard">
+            <div class="svc-ico">✓</div>
+            <div class="svc-info">
+              <div class="name">Directory services</div>
+              <div class="state">Operational</div>
+              <div class="detail">AD reachable over LDAPS</div>
+            </div>
+          </div>
+          <div class="svc-card" id="secCard">
+            <div class="svc-ico">🔒</div>
+            <div class="svc-info">
+              <div class="name">Secure channel</div>
+              <div class="state">Operational</div>
+              <div class="detail">Certificate pinned & verified</div>
+            </div>
+          </div>
+          <div class="svc-card" id="ssoCard">
+            <div class="svc-ico">☁</div>
+            <div class="svc-info">
+              <div class="name">Single sign-on</div>
+              <div class="state">Operational</div>
+              <div class="detail">Negotiate available</div>
+            </div>
+          </div>
+          <div class="svc-card" id="apiCard">
+            <div class="svc-ico">⚡</div>
+            <div class="svc-info">
+              <div class="name">API services</div>
+              <div class="state">Operational</div>
+              <div class="detail">Dashboard API responding</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lat-row">
+          <div class="lat-label"><span>Live response latency</span><span class="lat-val" id="latVal">— ms</span></div>
+          <div class="lat-bar"><span id="latBar" style="width:0%;background:var(--ok)"></span></div>
+        </div>
+
+        <div class="live-stats" id="liveStats">
+          <div class="live-stat"><div class="num" id="statUsers">—</div><div class="lbl">Users</div></div>
+          <div class="live-stat"><div class="num" id="statGroups">—</div><div class="lbl">Groups</div></div>
+          <div class="live-stat"><div class="num" id="statLatency">—</div><div class="lbl">Latency ms</div></div>
+        </div>
+
+        <div class="live-time" id="liveTime"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Register service worker for installable PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+
+    // Mobile install banner
+    let deferredPrompt;
+    function isMobile(){
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+    function showInstallBanner(){
+      const b = document.getElementById('installBanner');
+      if (!b || !isMobile()) return;
+      b.style.display = 'flex';
+    }
+    function hideInstallBanner(){
+      const b = document.getElementById('installBanner');
+      if (b) b.style.display = 'none';
+      try { localStorage.setItem('aegispass-install-dismissed', Date.now().toString()); } catch(e){}
+    }
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      showInstallBanner();
+    });
+    async function doInstall(){
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      }
+      hideInstallBanner();
+    }
+    // also show once on mobile after a short delay if already installable
+    setTimeout(() => {
+      const dismissed = localStorage.getItem('aegispass-install-dismissed');
+      if (isMobile() && !dismissed && !window.matchMedia('(display-mode: standalone)').matches) {
+        showInstallBanner();
+      }
+    }, 2500);
+
+    function setCard(id, ok, state, detail, warn=false){
+      const el = document.getElementById(id);
+      const ico = el.querySelector('.svc-ico');
+      const st = el.querySelector('.state');
+      const dt = el.querySelector('.detail');
+      ico.className = 'svc-ico ' + (ok ? 'ok' : warn ? 'warn' : 'off');
+      ico.textContent = ok ? '✓' : '!';
+      st.textContent = state;
+      st.style.color = ok ? '#a7f3d0' : warn ? '#fde68a' : '#e2e8f0';
+      dt.textContent = detail;
+    }
+    async function refresh(){
+      try{
+        const s = await (await fetch('/status.json')).json();
+        const dirOk = s.directory === 'online';
+        const secOk = s.secure_channel === 'verified';
+        const ssoOk = s.sso === 'available';
+        const apiOk = true;
+        const allOk = dirOk && secOk && ssoOk && apiOk;
+
+        setCard('dirCard', dirOk, dirOk?'Operational':'Degraded', dirOk?'AD reachable over LDAPS':'Connection issue', !dirOk);
+        setCard('secCard', secOk, secOk?'Operational':'Degraded', secOk?'Certificate pinned & verified':'TLS verification issue', !secOk);
+        setCard('ssoCard', ssoOk, ssoOk?'Operational':'Degraded', ssoOk?'Negotiate available':'SSO not configured', !ssoOk);
+        setCard('apiCard', apiOk, 'Operational', 'Dashboard API responding');
+
+        const badge = document.getElementById('svcBadge');
+        badge.className = 'svc-badge ' + (allOk ? '' : 'warn');
+        badge.innerHTML = `<span class="live-pulse" style="background:${allOk?'var(--ok)':'var(--warn)'};box-shadow:0 0 0 0 ${allOk?'rgba(34,197,94,.6)':'rgba(245,158,11,.6)'}"></span>` + (allOk ? 'All systems operational' : 'Some services degraded');
+
+        const ms = s.latency_ms || 0;
+        const pct = Math.max(5, Math.min(100, 100 - (ms / 2)));
+        const bar = document.getElementById('latBar');
+        const val = document.getElementById('latVal');
+        bar.style.width = pct + '%';
+        bar.style.background = pct > 80 ? 'var(--ok)' : pct > 40 ? 'var(--warn)' : 'var(--danger)';
+        val.textContent = ms + ' ms';
+
+        document.getElementById('statLatency').textContent = ms;
+        document.getElementById('statUsers').textContent = s.user_count != null ? s.user_count : '—';
+        document.getElementById('statGroups').textContent = s.group_count != null ? s.group_count : '—';
+        document.getElementById('liveTime').textContent = 'Last check: ' + new Date().toLocaleTimeString();
+      }catch(e){
+        ['dirCard','secCard','ssoCard','apiCard'].forEach(id=>{
+          const el=document.getElementById(id);
+          el.querySelector('.svc-ico').className='svc-ico off'; el.querySelector('.svc-ico').textContent='!';
+          el.querySelector('.state').textContent='Unavailable'; el.querySelector('.state').style.color='#e2e8f0';
+          el.querySelector('.detail').textContent='Status unavailable';
+        });
+        document.getElementById('svcBadge').className='svc-badge warn';
+        document.getElementById('svcBadge').innerHTML='<span class="live-pulse" style="background:var(--off)"></span>Status unavailable';
+      }
+    }
+    refresh();
+    setInterval(refresh, 30000);
+
+    const form=document.getElementById('login-form');
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const btn=document.getElementById('login'), alert=document.getElementById('alert');
+      alert.textContent=''; btn.disabled=true; btn.textContent='Signing in…';
+      try{
+        const res=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:new URLSearchParams({username:document.getElementById('username').value,password:document.getElementById('password').value})});
+        const data=await res.json();
+        if(data.result===1){ window.location.href='/app#dashboard'; }
+        else { alert.textContent=data.error||'Login failed.'; }
+      }catch(err){ alert.textContent='Request failed.'; }
+      finally{ btn.disabled=false; btn.textContent='Sign in'; }
+    });
+  </script>
+</body>
+</html>

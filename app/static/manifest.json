@@ -1,0 +1,25 @@
+{
+  "name": "AegisPass Password SelfService",
+  "short_name": "AegisPass SelfService",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#203a5e",
+  "theme_color": "#203a5e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/brand/viseal.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/brand/viseal.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "description": "AegisPass Active Directory password self-service and admin portal.",
+  "categories": ["productivity", "utilities"]
+}

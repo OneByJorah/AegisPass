@@ -1,0 +1,177 @@
+#!/usr/bin/python3
+# import class and constants
+import ssl
+
+from jsondb import Database
+from ldap3 import Tls, NTLM, Connection, Server, SUBTREE, MODIFY_REPLACE
+from slack_sdk import WebClient
+from settings import BASE_DIR, load_settings
+
+variables = load_settings()
+
+SLACK_BOT_TOKEN = str(variables.get('SLACK_BOT_TOKEN', '')).strip()
+slack_db = str(BASE_DIR / "src" / variables.get("slack_db", "slack_db.json"))
+
+db = Database(slack_db)
+
+sc = WebClient(token=SLACK_BOT_TOKEN) if SLACK_BOT_TOKEN else None
+
+# ===============
+
+
+def disconnect():
+    """
+    Force to disconnect the ldap connection with the server.
+    """
+    pass
+
+
+def conx(domain, user, passwd):
+    """
+    Connection to the server
+    """
+    tls_configuration = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
+
+    # define the server and the connection
+    s = Server(domain, port=636, use_ssl=True, tls=tls_configuration, connect_timeout=5)
+    conn = Connection(
+        s,
+        domain + "\\" + user,
+        passwd,
+        authentication=NTLM,
+        receive_timeout=5,
+    )
+    conn.start_tls()
+    conn.bind()
+
+    # perform the Bind operation
+    try:
+        if not conn.bind():
+            conn.unbind()
+            raise ValueError("Invalid credentials")
+    finally:
+        pass
+
+    # print("Connected")
+
+    return conn
+
+
+def search_slack_id(email):
+    for users in db["members"]:
+        # print(users)
+        if not (users["is_bot"] and users["deleted"]):
+            # noinspection PyBroadException
+            try:
+                if users["profile"]["email"] == email:
+                    # print(users['id'], users['profile']['email'])
+                    return users["id"]
+            except Exception:
+                print("User with this email: " + email + " no found!!")
+
+
+def search_userx(username, conn, basedn):
+    """
+        Verifies credentials for username and password.
+        Returns True on success or False on failure
+    """
+    user_dn = None
+    SEARCHFILTER = '(&(|' \
+                   '(userPrincipalName=' + username + ')' \
+                                                      '(samaccountname=' + username + ')' \
+                                                                                      '(mail=' + username + '))' \
+                                                                                                            '(objectClass=person))'
+    # SEARCHFILTER_DEFAULT = '(objectClass=person)'
+
+    conn.search(search_base=basedn, search_filter=SEARCHFILTER,
+                search_scope=SUBTREE, attributes=['cn',
+                                                  'mail'], paged_size=5)
+    for entry in conn.response:
+        # print(entry)
+        # user_dn1 = entry.get("dn")
+        user_mail = entry.get("attributes")["mail"]
+        if entry.get("dn") and entry.get("attributes"):
+            if entry.get("attributes").get("cn"):
+                user_dn = entry.get("dn")
+
+        return user_dn, user_mail
+
+    return None, None
+
+
+def authenticate(domain, username, password):
+    """
+    Verifies credentials for username and password.
+    Returns True on success or False on failure
+    """
+
+    tls_configuration = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
+    # define the server and the connection
+    s = Server(domain, port=636, use_ssl=True, tls=tls_configuration, connect_timeout=5)
+    conn = Connection(
+        s,
+        domain + "\\" + username,
+        password,
+        authentication=NTLM,
+        receive_timeout=5,
+    )
+    conn.start_tls()
+    conn.bind()
+    # print(conn.usage)
+    # perform the Bind operation
+    try:
+        if not conn.bind():
+            print("Not Connected")
+            conn.unbind()
+            return False
+        else:
+            print("Connected")
+            conn.unbind()
+            return True
+    finally:
+        pass
+
+
+def reset_passwd(domain, user_admin, passwd_admin, basedn, username, current, new_passwd, enable):
+    """
+    Verifies credentials for username and password.
+    Returns True on success or False on failure
+    """
+
+    conn = conx(domain, user_admin, passwd_admin)
+    user, email = search_userx(username, conn, basedn)
+
+    try:
+        if not authenticate(domain, username, current):
+            return False
+        else:
+            # perform the Bind operation
+
+            enc_pwd = '"{}"'.format(new_passwd).encode('utf-16-le')
+
+            changes = {'unicodePwd': [(MODIFY_REPLACE, [enc_pwd])]}
+
+            x = conn.modify(user, changes=changes)
+
+            print(x)
+            # Slack Notification for the user
+            if enable and sc is not None:
+                x = search_slack_id(email)
+
+                result = sc.chat_postMessage(
+                    channel=x,
+                    text="You password was reset! testing :) not panic :tada:",
+                )
+
+                print("Result: ", result["ok"])
+            else:
+                pass
+
+        # a new password is set, hashed with sha256 and a random salt
+        return True
+
+    finally:
+        conn.unbind()
+
+
+# =================================================

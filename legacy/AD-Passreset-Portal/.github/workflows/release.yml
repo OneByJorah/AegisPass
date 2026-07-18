@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+    # Reusable workflows don't inherit secrets by default; Phase 11's
+    # integration-tests-ldap job needs SAMBA_* secrets to run.
+    secrets: inherit
+
+  powershell-quality:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Parse-check all deploy/*.ps1
+        shell: pwsh
+        run: |
+          $bad = @()
+          Get-ChildItem deploy -Filter *.ps1 | ForEach-Object {
+            $t = $null; $e = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$t, [ref]$e) | Out-Null
+            if ($e.Count -gt 0) { $bad += $_.Name }
+          }
+          if ($bad.Count -gt 0) { Write-Error "Parse errors in: $($bad -join ', ')"; exit 1 }
+      - name: Pester (installer + uninstaller suites)
+        shell: pwsh
+        run: |
+          try { Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop } catch { Write-Host "Set-PSRepository skipped: $($_.Exception.Message)" }
+          Install-Module Pester -MinimumVersion 5.5.0 -Scope CurrentUser -Force -SkipPublisherCheck -Repository PSGallery
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = @('deploy/Install-PassReset.Tests.ps1','deploy/Uninstall-PassReset.Tests.ps1')
+          $cfg.Run.Exit = $true
+          Invoke-Pester -Configuration $cfg
+
+  release:
+    needs: [tests, powershell-quality]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5.2.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: src/PassReset.Web/ClientApp/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: src/PassReset.Web/ClientApp
+        run: npm ci
+
+      - name: Publish
+        run: |
+          $version = "${{ github.ref_name }}"
+          pwsh -NonInteractive -File deploy/Publish-PassReset.ps1 -Version $version
+        shell: pwsh
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zip = Get-ChildItem deploy/PassReset-*.zip | Select-Object -First 1
+          gh release create $version $zip.FullName `
+            --title "PassReset $version" `
+            --generate-notes
+        shell: pwsh
