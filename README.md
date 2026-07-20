@@ -96,4 +96,10 @@ Aggregate status only:
 
 ## 📝 License
 
-Internal-use project for AegisPass. Contact the IT team before redistribution.
+MIT — see [LICENSE](LICENSE).
+
+## 👤 Author
+
+Built by **Jhonattan L. Jimenez** ([@OneByJorah](https://github.com/OneByJorah)) under **JorahOne LLC**.
+
+More projects: [github.com/OneByJorah](https://github.com/OneByJorah)
