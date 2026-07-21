@@ -1,45 +1,39 @@
 [Unit]
 Description=AegisPass (Flask + gunicorn)
-Documentation=file:///home/j1admin/aegispass/README.md
+Documentation=file:///opt/aegispass/README.md
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=j1admin
-Group=j1admin
-WorkingDirectory=/home/j1admin/aegispass
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/aegispass
 
-# ── Runtime environment ──────────────────────────────────────────────────
-# PYTHONPATH must point at the project root so the `app` package import works.
-Environment=PYTHONPATH=/home/j1admin/aegispass
+# Runtime environment
+Environment=PYTHONPATH=/opt/aegispass
 Environment=PYTHONUNBUFFERED=1
-# python-dotenv loads .env from the working directory at import time.
-# If you prefer systemd to own the secrets, add:
-#   EnvironmentFile=/home/j1admin/aegispass/.env
-# (the .env is gitignored — never commit it).
+# For systemd-managed secrets, add:
+# EnvironmentFile=/opt/aegispass/.env
+# .env is gitignored and must never be committed.
 
-# ── Idempotent bootstrap (runs as j1admin before ExecStart) ──────────────
-# Create the venv only if gunicorn is not already installed, then install deps.
-ExecStartPre=/bin/bash -c 'VENV=/home/j1admin/aegispass/.venv; if [ ! -x "$VENV/bin/gunicorn" ]; then python3.11 -m venv "$VENV"; "$VENV/bin/pip" install --upgrade pip; "$VENV/bin/pip" install -r /home/j1admin/aegispass/requirements.txt; fi'
+# Idempotent bootstrap: create venv if gunicorn is missing
+ExecStartPre=/bin/bash -c 'VENV=/opt/aegispass/.venv; if [ ! -x "$VENV/bin/gunicorn" ]; then python3.11 -m venv "$VENV"; "$VENV/bin/pip" install --upgrade pip; "$VENV/bin/pip" install -r /opt/aegispass/requirements.txt; fi'
 
-# ── Main process ─────────────────────────────────────────────────────────
-# Bound to localhost; terminate TLS + proxy at nginx.
-ExecStart=/home/j1admin/aegispass/.venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
+# Bound to localhost; terminate TLS + proxy at nginx
+ExecStart=/opt/aegispass/.venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 app:app
 
 Restart=on-failure
 RestartSec=5
-# Kill any lingering workers on restart/stop.
 TimeoutStopSec=30
 
-# ── Hardening ────────────────────────────────────────────────────────────
+# Hardening
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=false
-ReadWritePaths=/home/j1admin/aegispass
+ReadWritePaths=/opt/aegispass
 PrivateTmp=true
 
 # [Install]
-# Uncomment these two lines (or run `systemctl enable aegispass`) to
-# start the service automatically at boot.
+# Uncomment these lines (or run systemctl enable aegispass) to start on boot.
 # WantedBy=multi-user.target
