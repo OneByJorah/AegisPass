@@ -1,63 +1,99 @@
-# AegisPass
+<div align="center">
+  <img src="https://img.shields.io/badge/ASP.NET-512BD4?style=for-the-badge&logo=dotnet&logoColor=white">
+  <img src="https://img.shields.io/badge/Active%20Directory-0078D4?style=for-the-badge&logo=microsoft&logoColor=white">
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white">
+</div>
 
-Self-service Active Directory password reset and identity management portal — LDAPS-backed, scoped admin console, audit logging.
+<br>
 
-![status](https://img.shields.io/badge/status-active-FFB300?style=flat-square)
-![language](https://img.shields.io/badge/python-3.11+-0d0d0c?style=flat-square)
-![license](https://img.shields.io/badge/license-MIT-FFB300?style=flat-square)
+<div align="center">
+  <h1>AegisPass</h1>
+  <p><strong>Self-Service AD Password Reset Portal</strong></p>
+  <p>LDAPS, admin console, and audit logging for Active Directory.</p>
+  <p>
+    <a href="#features">Features</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#configuration">Configuration</a> •
+    <a href="#contributing">Contributing</a>
+  </p>
+</div>
 
-## Overview
+---
 
-AegisPass is a secure, self-service Active Directory password reset and identity management portal. End users can reset and expire their own passwords, enroll recovery factors, and Domain Admins get a scoped directory console — all over pinned LDAPS with no blind trust of system CAs.
+## Screenshot
+
+![AegisPass Dashboard](docs/screenshot.png)
+*Self-service Active Directory password reset portal.*
 
 ## Features
 
-- Self-service password change for regular users
-- Admin dashboard with real-time KPIs, directory health, and activity status
-- User, Group, and OU management (restricted to configured write scopes)
-- Audit logging of privileged actions
-- Pinned TLS to the domain controller — no blind trust of system CAs
-- Safety denylist protects Tier-0 accounts and built-in containers
-- Dark Amber Cyberpunk branding (accent #FFB300, JetBrains Mono)
+- **Self-Service Reset** — Employees reset their own AD password.
+- **LDAPS Support** — Secure LDAP connections to Active Directory.
+- **Admin Console** — Manage users, OUs, and portal settings.
+- **Audit Logging** — Track all password reset attempts.
+- **Policy Enforcement** — Enforces AD password policies.
+- **Email Notifications** — Alert admins of failed attempts.
+- **ASP.NET Core** — Modern .NET backend.
+- **Docker Support** — Easy deployment.
 
-## Architecture / Tech Stack
-
-- **Backend**: Flask + Gunicorn (Python 3.11+)
-- **Directory**: LDAPS / Global Catalog
-- **Reverse Proxy**: Nginx (production)
-- **Deployment**: systemd service, Docker
-
-## Installation
+## Quick Start
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+git clone https://github.com/OneByJorah/AegisPass.git
+cd AegisPass
 
 cp .env.example .env
-# Edit .env with your AD configuration, then chmod 600 .env
-
-# Development
-SESSION_COOKIE_SECURE=False python -c "from app import app; app.run(host='127.0.0.1', port=8000)"
+docker compose up -d
 ```
 
-For production, use `systemd/aegispass.service` and `deploy/nginx-aegispass.conf`.
+Open **http://localhost:5000** in your browser.
 
 ## Configuration
 
-| Variable | Description |
-|----------|-------------|
-| `SECRET_KEY_FLASK` | Flask session signing key |
-| `AD_HOST` | Domain controller hostname |
-| `AD_LDAPS_PORT` | LDAPS port (default: `636`) |
-| `AD_BIND_USER` | Service account DN |
-| `AD_BIND_PASSWORD` | Service account password |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AD_LDAP_SERVER` | — | Domain controller hostname |
+| `AD_LDAP_PORT` | `636` | LDAPS port |
+| `AD_BASE_DN` | — | Base DN for user searches |
+| `AD_SERVICE_ACCOUNT` | — | Service account username |
+| `AD_SERVICE_PASSWORD` | — | Service account password |
+| `ADMIN_EMAIL` | — | Admin email for notifications |
+| `PORT` | `5000` | Application port |
 
-See `.env.example` for full options.
+## Project Structure
+
+```
+AegisPass/
+├── Controllers/
+│   ├── HomeController.cs
+│   ├── PasswordController.cs
+│   └── AdminController.cs
+├── Services/
+│   ├── ActiveDirectoryService.cs
+│   ├── AuditService.cs
+│   └── EmailService.cs
+├── Views/                   # Razor views
+├── wwwroot/                 # Static assets
+├── docker-compose.yml
+└── README.md
+```
+
+## Contributing
+
+Contributions are welcome. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
+
+## Security
+
+For security concerns, see [SECURITY.md](SECURITY.md). Please report vulnerabilities to **info@jorahone.com** — do not use public issues.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT © Jhonattan L. Jimenez
 
 ---
-Part of the JorahOne / J1 ecosystem — self-service AD identity management for enterprise environments.
+
+<div align="center">
+  <p>Self-service Active Directory password reset.</p>
+  <p><a href="https://github.com/OneByJorah">@OneByJorah</a></p>
+</div>

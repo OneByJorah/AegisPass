@@ -1,30 +1,41 @@
-# Contributing to AegisPass
+# Contributing to JorahOne Projects
 
-Thank you for considering contributing!
+Thank you for your interest in contributing! This document provides guidelines for contributing to our projects.
 
 ## How to Contribute
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes with clear commit messages
-4. Push to your fork and open a Pull Request
+1. **Fork the Repository** — Create a fork of the project on GitHub.
+2. **Create a Branch** — Create a feature branch from `main`.
+3. **Make Changes** — Implement your changes with clear commit messages.
+4. **Test** — Ensure your changes work correctly.
+5. **Submit a PR** — Open a pull request with a clear description.
 
 ## Development Setup
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your values
+git clone https://github.com/your-username/PROJECT.git
+cd PROJECT
+# Follow project-specific setup instructions
 ```
 
-## Code Style
+## Code Standards
 
-- Follow PEP 8
-- Keep changes focused and minimal
-- Update `.env.example` when adding new configuration
+- Follow existing code style and conventions
+- Write clear, descriptive commit messages
+- Add comments for complex logic
+- Update documentation as needed
 
-## Security
+## Pull Request Guidelines
 
-Never commit secrets, `.env`, certificates, or internal infrastructure details.
+- Provide a clear PR title and description
+- Reference any related issues
+- Include screenshots for UI changes
+- Ensure all checks pass
+
+## Code of Conduct
+
+Please review our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
+
+## Questions?
+
+Open an issue or contact **info@jorahone.com**.

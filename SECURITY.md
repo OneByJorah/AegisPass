@@ -1,32 +1,36 @@
-# Security Policy — AegisPass
+# Security Policy
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability, please report it responsibly:
+
+**DO NOT** open a public GitHub issue for security vulnerabilities.
+
+Instead, please email: **info@jorahone.com**
+
+Include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fix (if any)
+
+## Response Timeline
+
+- **Acknowledgment**: Within 48 hours
+- **Initial assessment**: Within 1 week
+- **Fix timeline**: Depends on severity
 
 ## Supported Versions
 
 | Version | Supported |
 |---------|-----------|
-| Latest  | ✅ |
-| Older   | ❌ |
+| Latest  | ✅ Yes    |
+| Older   | ❌ No     |
 
-## Reporting a Vulnerability
+## Security Best Practices
 
-Please do **not** open public GitHub issues for security vulnerabilities.
-
-- Email: **info@jorahone.com**
-- Or use GitHub Security Advisories
-
-Please include:
-
-- Type of issue and affected files
-- Steps to reproduce
-- Suggested impact
-- Proof-of-concept if available
-
-We will acknowledge receipt within **3 business days** and coordinate disclosure.
-
-## Security Model
-
-- All secrets live in `.env` (gitignored, chmod 600).
-- The DC certificate fingerprint is pinned via `AD_CERT_FINGERPRINT`.
-- Writable operations are confined to `AD_WRITE_SCOPE_OU`.
-- Tier-0 objects are protected by a built-in safety denylist.
-- Gunicorn binds to `127.0.0.1` only; terminate TLS at Nginx.
+When deploying our projects:
+- Use environment variables for secrets
+- Enable HTTPS in production
+- Keep dependencies updated
+- Follow principle of least privilege
