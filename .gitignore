@@ -15,3 +15,6 @@ venv/
 *.log
 .vscode/
 .idea/
+
+# OneByJorah portfolio tooling
+.venv-screenshot/
