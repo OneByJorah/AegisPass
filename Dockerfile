@@ -16,5 +16,7 @@ USER appuser
 
 EXPOSE 8000
 
-# Replace with the real application start command once the entrypoint is confirmed.
-CMD ["python", "-c", "import os; print('Starting on port', os.environ.get('PORT', '8000'))"]
+ENV PATH="/home/appuser/.local/bin:${PATH}"
+
+# Run via gunicorn. Number of workers auto-scales with available CPU cores.
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8000", "--timeout", "30", "--log-level", "info", "app:app"]

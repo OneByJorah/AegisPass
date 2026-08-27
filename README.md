@@ -7,7 +7,8 @@
 Self-service Active Directory password reset portal
 
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
-![Language](https://img.shields.io/badge/language-C#-blue)
+![Language](https://img.shields.io/badge/language-Python%2FFlask-blue)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)
 </div>
 
 ---
@@ -28,8 +29,8 @@ Self-service Active Directory password reset portal
 - **Audit Logging** — Track all password reset attempts.
 - **Policy Enforcement** — Enforces AD password policies.
 - **Email Notifications** — Alert admins of failed attempts.
-- **ASP.NET Core** — Modern .NET backend.
-- **Docker Support** — Easy deployment.
+- **Python / Flask** — Lightweight, security-focused backend.
+- **Docker & Docker Compose** — One-command deployment.
 
 ## Quick Start
 
@@ -41,7 +42,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open **http://localhost:5000** in your browser.
+Open **http://localhost:8000** in your browser.
 
 ## Configuration
 
@@ -59,17 +60,20 @@ Open **http://localhost:5000** in your browser.
 
 ```
 AegisPass/
-├── Controllers/
-│   ├── HomeController.cs
-│   ├── PasswordController.cs
-│   └── AdminController.cs
-├── Services/
-│   ├── ActiveDirectoryService.cs
-│   ├── AuditService.cs
-│   └── EmailService.cs
-├── Views/                   # Razor views
-├── wwwroot/                 # Static assets
-├── docker-compose.yml
+├── app/
+│   ├── __init__.py          # Flask app factory
+│   ├── config.py            # Environment-based configuration
+│   ├── auth/                # Login, SSO Negotiate, logout
+│   ├── ad/                  # LDAP/AD operations, health, safety guards
+│   ├── routes/              # UI, API, workflow, enrollment blueprints
+│   ├── templates/           # Jinja2 templates
+│   └── static/              # CSS, JS, images, PWA assets
+├── requirements.txt         # Python dependencies
+├── Dockerfile               # Production container image
+├── docker-compose.yml       # Local Docker deployment
+├── install.sh / install.ps1 # One-command installers
+├── .env.example             # Configuration template (copy to .env)
+├── docs/assets/             # Banner & screenshots
 └── README.md
 ```
 
