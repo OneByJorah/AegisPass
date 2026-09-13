@@ -1,89 +1,72 @@
-# AegisPass
-
 <div align="center">
 
-![AegisPass Banner](docs/assets/banner.svg)
+![AegisPass banner](docs/assets/banner.svg)
 
-**Self-service Active Directory password management with real-time safety guards, workflow automation, and SSO/Kerberos support.**
+# AegisPass
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![LDAP](https://img.shields.io/badge/LDAP-Active%20Directory-00599C?logo=microsoftactive-directory&logoColor=white)](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview)
+**A self-service Active Directory password reset portal for Windows domain users — LDAPS-pinned, workflow-driven, and fully audited.**
 
-[Quick Start](#quick-start) · [Features](#features) · [Architecture](#architecture) · [Configuration](#configuration) · [Deployment](#deployment) · [Contributing](#contributing)
+<a href="https://github.com/OneByJorah/AegisPass/stargazers"><img src="https://img.shields.io/github/stars/OneByJorah/AegisPass?style=flat-square" alt="Stars"></a>
+<a href="https://github.com/OneByJorah/AegisPass/commits"><img src="https://img.shields.io/github/last-commit/OneByJorah/AegisPass?style=flat-square" alt="Last commit"></a>
+<img src="https://img.shields.io/github/license/OneByJorah/AegisPass?style=flat-square" alt="License">
+<img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+<img src="https://img.shields.io/badge/Flask-3.1-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask">
+<img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker">
 
 </div>
 
----
+![AegisPass screenshot](docs/assets/screenshot.png)
 
-## Overview
+## What This Is
 
-AegisPass is a Flask-based web application that gives end users secure self-service access to common Active Directory operations — password resets, account unlocks, MFA enrollment — while enforcing safety guards on privileged Tier-0 objects and surfacing every action through audit logs.
+AegisPass is a Flask web application that gives end users secure self-service access to common Active Directory operations — password resets, account unlocks, and TOTP-based MFA enrollment — while enforcing safety guards on privileged Tier-0 objects and recording every action to an audit trail.
 
-| Capability | Detail |
-|---|---|
-| Self-service enrollment | Users register recovery profiles and set up TOTP-based MFA |
-| Password management | Self-service reset with configurable expiry reminders via workflow engine |
-| Tier-0 safety guards | Prevents accidental or malicious changes to Domain Admins, KRBTGT, and other critical AD objects |
-| SSO / Kerberos | Optional GSSAPI-based single sign-on for domain-joined machines |
-| Workflow engine | Password expiry notifications and approval chains |
-| Audit logging | Every action logged with user, timestamp, and result |
-| Global Catalog | Read-only lookups across the forest on port 3268 |
-| PWA | Offline-capable progressive web app with service worker |
+It exists so helpdesks can stop resetting passwords by hand and stop granting standing write access to Domain Admins. The portal connects to the domain controller over **LDAPS with SHA-256 certificate fingerprint pinning** (fail-closed), keeps a **read-only Global Catalog** connection for cross-domain lookups, and supports **Kerberos/Negotiate SSO** with a password-form fallback.
 
----
+The current application consolidates the earlier PyPass and AD-Passreset-Portal tools, retained under `legacy/` for reference.
+
+## Quick Start
+
+```bash
+git clone https://github.com/OneByJorah/AegisPass.git && cd AegisPass
+cp .env.example .env   # set SECRET_KEY_FLASK, AD_HOST, AD_BASE_DN, AD_BIND_USER, AD_BIND_PASSWORD
+docker compose up -d
+```
+
+Open **http://localhost:8000**. Health check: **http://localhost:8000/health**.
 
 ## Features
 
-### Self-Service Enrollment
-Users register a recovery profile (security questions, phone number, email) and enroll TOTP-based multi-factor authentication via any authenticator app.
-
-### Password Management
-End users reset expired or forgotten passwords through the web portal. Expiry reminders are delivered through the workflow engine at configurable intervals.
-
-### Tier-0 AD Safety Guards
-Changes to high-privilege accounts (Domain Admins, KRBTGT, Enterprise Admins, Schema Admins) are blocked or require elevated approval, preventing catastrophic misconfigurations.
-
-### Workflow Engine
-Automated notifications for password expiry, account lockout events, and approval chains for privileged operations. Configurable via environment variables.
-
-### SSO / Kerberos
-Domain-joined machines authenticate automatically using GSSAPI. Falls back to username/password when Kerberos is unavailable.
-
-### Global Catalog
-Read-only forest-wide lookups on port 3268 for user discovery and group membership queries without binding to individual domain controllers.
-
-### Audit Trail
-Every password reset, enrollment, and workflow action is logged with user identity, timestamp, source IP, and result for compliance reporting.
-
-### PWA Support
-Service worker enables offline access to static assets and cached pages. Installable on mobile and desktop for a native-like experience.
-
----
+- **Self-service password reset** — users reset expired or forgotten passwords from the portal; expiry reminders fire through the workflow engine at configurable day thresholds.
+- **Account unlock & lifecycle** — create, update, disable/enable, unlock, and delete users, plus force-change-at-next-logon.
+- **Tier-0 safety guards** — changes to Domain Admins, Enterprise Admins, Schema Admins, and KRBTGT are blocked or gated, preventing catastrophic misconfiguration.
+- **Hardened LDAP management channel** — LDAPS on port 636 with `AD_CERT_FINGERPRINT` pinning; connections to a mismatched DC are refused.
+- **Read-only Global Catalog** — forest-wide searches on port 3268, never used for writes.
+- **SSO / Kerberos** — GSSAPI/Negotiate login for domain-joined machines, with username/password fallback for the rest.
+- **Self-service enrollment** — recovery profile plus TOTP MFA enrollment via any authenticator app.
+- **Audit trail** — every reset, enrollment, and workflow action logged with user, timestamp, source IP, and result.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   Browser (PWA)                     │
-│            Flask SPA + Service Worker               │
+│            Flask UI + Service Worker                │
 └──────────────────────┬──────────────────────────────┘
                        │ HTTP :8000
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│                  Gunicorn (2 workers)                │
+│               Gunicorn (2 workers)                  │
 │                  ┌──────────────┐                   │
 │                  │  Flask App   │                   │
 │                  └──────┬───────┘                   │
 │         ┌───────────────┼───────────────┐           │
 │         ▼               ▼               ▼           │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐    │
-│  │   Routes   │  │   Safety   │  │  Workflow  │    │
-│  │ ui / api / │  │   Guards   │  │   Engine   │    │
-│  │ enrollment │  │            │  │            │    │
-│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘    │
-│        │               │               │            │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐     │
+│  │   Routes   │  │   Safety   │  │  Workflow  │     │
+│  │ ui / api / │  │   Guards   │  │   Engine   │     │
+│  │ enrollment │  │            │  │            │     │
+│  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘     │
 │        └───────────────┼───────────────┘            │
 │                        ▼                            │
 │               ┌───────────────┐                     │
@@ -91,228 +74,128 @@ Service worker enables offline access to static assets and cached pages. Install
 │               │  (ldap3)      │                     │
 │               └───────┬───────┘                     │
 └───────────────────────┼─────────────────────────────┘
-                        │ LDAP/389  GC/3268
+                        │ LDAPS/636   GC/3268
                         ▼
-              ┌──────────────────┐
+              ┌───────────────────┐
               │  Active Directory │
               │  Domain Forest    │
-              └──────────────────┘
+              └───────────────────┘
 ```
 
-### Project Structure
+### Project layout
 
 ```
 AegisPass/
 ├── app/
-│   ├── ad/                    # Active Directory connector (ldap3)
-│   ├── auth/                  # Authentication (LDAP bind, Kerberos/GSSAPI)
-│   ├── routes/
-│   │   ├── ui.py              # Web UI routes (login, dashboard, enrollment)
-│   │   ├── api.py             # REST API endpoints
-│   │   ├── enrollment.py      # Self-service enrollment flow
-│   │   ├── workflows.py       # Password expiry reminders, approval chains
-│   │   └── __init__.py        # Blueprint registration
-│   ├── static/                # CSS, JS, images, service worker
-│   └── templates/             # Jinja2 HTML templates
-├── docs/assets/               # Screenshots, banner SVG
-├── Dockerfile                 # python:3.11-slim + gunicorn
-├── docker-compose.yml         # Single-service deployment
-├── requirements.txt           # Python dependencies
-├── .env.example               # 47 configuration variables
-├── LICENSE                    # MIT
-└── README.md
+│   ├── ad/            # AD connector, safety guards, health (ldap3)
+│   ├── auth/          # LDAP bind + Kerberos/GSSAPI SSO
+│   ├── routes/        # ui, api, enrollment, workflows blueprints
+│   ├── static/        # PWA assets, CSS, JS
+│   └── templates/     # base.html, auth/login.html
+├── config/workflows.json
+├── deploy/            # nginx config, install script
+├── docker-compose.yml
+├── Dockerfile         # python:3.11-slim + gunicorn
+├── legacy/            # PyPass + AD-Passreset-Portal (reference)
+└── systemd/aegispass.service
 ```
-
----
 
 ## Configuration
 
-AegisPass is configured entirely through environment variables. Copy `.env.example` to `.env` and set the required values.
+Copy `.env.example` to `.env`. The most important variables:
 
-### Flask / General
-
-| Variable | Default | Description |
-|---|---|---|
-| `SECRET_KEY` | — | Flask secret key for sessions |
-| `FLASK_ENV` | `production` | `production` or `development` |
-| `PORT` | `8000` | Server listen port |
-| `ALLOWED_HOSTS` | `*` | Comma-separated hostnames |
-
-### Active Directory Management
+### Active Directory (writable, LDAPS)
 
 | Variable | Default | Description |
 |---|---|---|
-| `AD_SERVER` | — | Domain controller hostname or IP |
-| `AD_PORT` | `389` | LDAP port |
-| `AD_USE_SSL` | `true` | Use LDAP over SSL (636) |
-| `AD_BASE_DN` | — | Base DN for user searches (e.g. `DC=example,DC=com`) |
-| `AD_BIND_DN` | — | Service account DN for write operations |
+| `AD_HOST` | — | Domain controller hostname or IP |
+| `AD_LDAPS_PORT` | `636` | LDAPS port |
+| `AD_DOMAIN` | — | AD domain (e.g. `example.com`) |
+| `AD_BASE_DN` | — | Base DN for searches (e.g. `DC=example,DC=com`) |
+| `AD_BIND_USER` | — | Service account DN for write operations |
 | `AD_BIND_PASSWORD` | — | Service account password |
-| `AD_USER_SEARCH_BASE` | — | OU/container to search for users |
-| `AD_GROUP_SEARCH_BASE` | — | OU/container to search for groups |
+| `AD_CERT_FINGERPRINT` | — | Pinned SHA-256 certificate fingerprint (fail-closed) |
 
-### Global Catalog (Read-Only)
-
-| Variable | Default | Description |
-|---|---|---|
-| `GC_SERVER` | — | Global Catalog server hostname |
-| `GC_PORT` | `3268` | Global Catalog LDAP port |
-
-### Slack Integration
+### Global Catalog (read-only)
 
 | Variable | Default | Description |
 |---|---|---|
-| `SLACK_WEBHOOK_URL` | — | Slack incoming webhook for notifications |
-| `SLACK_CHANNEL` | — | Target channel |
+| `AD_GC_HOST` | — | Global Catalog server hostname |
+| `AD_GC_PORT` | `3268` | Global Catalog LDAP port |
 
-### reCAPTCHA
-
-| Variable | Default | Description |
-|---|---|---|
-| `RECAPTCHA_SITE_KEY` | — | Google reCAPTCHA v2 site key |
-| `RECAPTCHA_SECRET_KEY` | — | Google reCAPTCHA v2 secret key |
-
-### Email / SMTP
+### Application
 
 | Variable | Default | Description |
 |---|---|---|
-| `SMTP_SERVER` | — | SMTP relay hostname |
-| `SMTP_PORT` | `587` | SMTP port (TLS) |
-| `SMTP_USERNAME` | — | SMTP auth username |
-| `SMTP_PASSWORD` | — | SMTP auth password |
-| `SMTP_USE_TLS` | `true` | Enable STARTTLS |
-| `EMAIL_FROM` | — | Sender address |
-| `EMAIL_SUBJECT_PREFIX` | `[AegisPass]` | Subject line prefix |
+| `SECRET_KEY_FLASK` | — | Flask session secret key |
+| `SESSION_LIFETIME_MINUTES` | `30` | Session lifetime |
+| `DEBUG` | `False` | Enable debug mode |
+| `COMPANY` / `APP_NAME` | `AegisPass` | Display branding |
+| `EXPIRY_REMINDER_DAYS` | `7,3` | Comma-separated password-expiry reminder thresholds |
 
-### SMS (Gammu / Twilio / Mock)
+### Integrations
 
 | Variable | Default | Description |
 |---|---|---|
-| `SMS_PROVIDER` | `mock` | `gammu`, `twilio`, or `mock` |
-| `TWILIO_ACCOUNT_SID` | — | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | — | Twilio auth token |
-| `TWILIO_FROM_NUMBER` | — | Twilio sender phone number |
+| `SMTP_ENABLED` / `SMTP_HOST` / `SMTP_PORT` | `False` / — / `25` | Internal SMTP relay settings |
+| `SMS_PROVIDER` | `none` | `none`, `mock`, `gammu`, or `twilio` |
+| `SMS_GATEWAY_URL` / `SMS_API_TOKEN` | — | Self-hosted Gammu REST gateway |
+| `SLACK_BOT_TOKEN` / `SLACK_ACTIVATION` | — / `False` | Slack notifications |
+| `RECAPTCHA_ENABLED` / `RECAPTCHA_PUBLIC_KEY` / `RECAPTCHA_PRIVATE_KEY` | `False` / — / — | Login CAPTCHA |
 
-### Company / Branding
+> [!NOTE]
+> Production deployments require at minimum `SECRET_KEY_FLASK`, `AD_HOST`, `AD_BASE_DN`, `AD_BIND_USER`, `AD_BIND_PASSWORD`, and a valid `AD_CERT_FINGERPRINT`.
 
-| Variable | Default | Description |
+## API
+
+The REST API is mounted under `/api` and covered by `app/routes/api.py`:
+
+| Method | Endpoint | Purpose |
 |---|---|---|
-| `COMPANY_NAME` | `AegisPass` | Display name |
-| `APP_NAME` | `AegisPass` | Application title |
-| `APP_TAGLINE` | `Self-service AD management` | Tagline |
+| GET | `/api/user-stats`, `/api/device-stats` | Dashboard counts |
+| GET/POST | `/api/users` | List / create users |
+| GET/PATCH/DELETE | `/api/users/<dn>` | Read / update / delete a user |
+| POST | `/api/users/<dn>/enable`, `/unlock` | Enable / unlock |
+| POST | `/api/users/<dn>/password` | Administrative password set |
+| POST | `/api/self/password`, `/self/reset-request`, `/self/reset-confirm` | Self-service flows |
+| GET/POST/DELETE | `/api/groups`, `/api/groups/<dn>` | Group management |
+| GET | `/api/audit` | Audit log |
+| GET | `/health`, `/health/ldap`, `/status.json` | Health / status |
 
-> **Note:** All variables are optional for local development. Production deployments require at minimum `SECRET_KEY`, `AD_SERVER`, `AD_BASE_DN`, `AD_BIND_DN`, and `AD_BIND_PASSWORD`.
+## Use Cases
 
----
+1. **Helpdesk deferral** — domain users self-reset passwords and unlock accounts without queueing a ticket.
+2. **Compliance** — audit logging and Tier-0 guards make privileged changes reviewable and hard to misfire.
+3. **MSP / enterprise AD** — one portal over a hardened LDAPS channel with pinned certificates, plus forest-wide GC lookups.
 
-## Quick Start
+## Tech Stack
 
-### Using Docker (Recommended)
+Python 3.11, Flask 3.1, ldap3, pyotp, gunicorn, Docker / Docker Compose, nginx, systemd.
 
-```bash
-git clone https://github.com/OneByJorah/AegisPass.git
-cd AegisPass
+## Screenshots
 
-# Configure
-cp .env.example .env
-# Edit .env with your AD credentials and settings
-
-# Build and run
-docker compose up -d
-
-# Open
-open http://localhost:8000
-```
-
-### Local Development
-
-```bash
-git clone https://github.com/OneByJorah/AegisPass.git
-cd AegisPass
-
-python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate  # Linux/macOS
-
-pip install -r requirements.txt
-
-cp .env.example .env
-# Edit .env
-
-python app.py
-```
-
-### Verify Health
-
-```bash
-curl http://localhost:8000/health
-# {"status": "healthy"}
-```
-
----
-
-## Deployment
-
-### Docker Compose
-
-```yaml
-services:
-  aegispass:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file: .env
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-```
-
-### Production Considerations
-
-- Set `FLASK_ENV=production` and generate a strong `SECRET_KEY`.
-- Place behind a reverse proxy (nginx, Caddy) with TLS termination.
-- Configure a real SMTP server for email notifications.
-- Switch `SMS_PROVIDER` to `twilio` or `gammu` for production SMS.
-- Restrict `ALLOWED_HOSTS` to your domain.
-- Enable LDAP over SSL (port 636) for AD communication.
-
----
+| View | |
+|---|---|
+| ![Desktop](docs/assets/screenshot.png) | ![Mobile](docs/assets/screenshot-mobile.png) |
+| ![Full viewport](docs/screenshots/main.viewport.full.png) | ![Mobile capture](docs/screenshots/main.mobile.png) |
 
 ## Security
 
-- All actions logged to audit trail with user, timestamp, IP, and result.
-- Tier-0 AD objects (Domain Admins, KRBTGT, Enterprise Admins, Schema Admins) are protected by safety guards.
-- reCAPTCHA on login page to prevent brute-force attempts.
-- Non-root Docker container via `appuser`.
-- Secrets managed through environment variables, never committed to source control.
-
-Report security vulnerabilities privately via [GitHub Security Advisories](https://github.com/OneByJorah/AegisPass/security/advisories/new).
-
----
+- SHA-256 certificate fingerprint pinning on the LDAPS channel (fail-closed).
+- Tier-0 objects protected by safety guards.
+- Non-root container (`appuser`); non-sensitive login status panel that avoids leaking internal hostnames.
+- Report vulnerabilities privately via [GitHub Security Advisories](https://github.com/OneByJorah/AegisPass/security/advisories/new).
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit changes (`git commit -m "Add my feature"`)
-4. Push to branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
----
+Fork, branch, and open a pull request — see [CONTRIBUTING.md](CONTRIBUTING.md). [Open an issue](https://github.com/OneByJorah/AegisPass/issues) for bugs or ideas.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
 
----
+## Connect
 
-<div align="center">
-
-**[AegisPass](https://github.com/OneByJorah/AegisPass)** · Built by [OneByJorah](https://github.com/OneByJorah)
-
-</div>
+- [jorahone.com](https://jorahone.com)
+- [GitHub Org](https://github.com/OneByJorah)
+- [info@jorahone.com](mailto:info@jorahone.com)
