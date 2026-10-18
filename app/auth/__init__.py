@@ -75,6 +75,11 @@ def _verify_credentials(ident: str, pw: str):
     Accepts sAMAccountName, UPN (name@example.com) or firstname.lastname.
     Returns (ok, message, dn).
     """
+    from app.config import Config
+    if Config.DEMO_MODE:
+        if ident.strip().lower() == Config.DEMO_USERNAME.lower() and pw == Config.DEMO_PASSWORD:
+            return True, "ok", f"CN=Demo User,OU=Users,{Config.AD_BASE_DN}"
+        return False, "Username not found or password incorrect.", None
     import ldap3
     user_dn = _dn_for_login(ident)
     if not user_dn:

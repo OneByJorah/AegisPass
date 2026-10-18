@@ -3,7 +3,7 @@
 IMPORTANT: this intentionally exposes ONLY non-sensitive signals so users can
 see the directory is reachable and trusted, WITHOUT leaking internal hostnames,
 IPs, DNs, or credentials. e.g. 'Directory: Online', 'Secure channel: Verified',
-not '<DC-IP>:636 CN=AegisPass-DC...'.
+not '<DC-IP>:636 CN=kervado-DC...'.
 """
 from __future__ import annotations
 
@@ -21,12 +21,20 @@ def _tcp_open(host: str, port: int, timeout: float = 2.0) -> bool:
 
 
 def status() -> Dict:
-    """Return a non-sensitive health snapshot for the UI.
-
-    Includes directory reachability, TLS pin verification, SSO availability,
-    and anonymised aggregate counts for the login-page live dashboard.
-    """
+    """Return a non-sensitive health snapshot for the UI."""
     from app.config import Config
+    if Config.DEMO_MODE:
+        from app.ad.demo import count_users, count_groups
+        sso_state = "available" if Config.SSO_ENABLED else "disabled"
+        return {
+            "directory": "online",
+            "secure_channel": "verified",
+            "sso": sso_state,
+            "latency_ms": 12,
+            "user_count": count_users(),
+            "group_count": count_groups(),
+            "message": "Demo mode — synthetic directory data.",
+        }
     out = {
         "directory": "unknown",
         "secure_channel": "unknown",
@@ -75,6 +83,9 @@ def status() -> Dict:
 
 def ldap_ping() -> bool:
     """Quick bind test used by /health/ldap endpoint."""
+    from app.config import Config
+    if Config.DEMO_MODE:
+        return True
     try:
         from app.ad import client
         conn = client.get_connection()
