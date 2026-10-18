@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ app_name | default('AegisPass') }}</title>
+  <title>{{ app_name | default('kervado') }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
   <link rel="icon" href="{{ url_for('static', filename='brand/favicon.png') }}">
@@ -14,10 +14,10 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="logo">
-          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass">
+          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="kervado">
         </div>
         <div>
-          <div class="name">{{ company | default('AegisPass') }}</div>
+          <div class="name">{{ company | default('kervado') }}</div>
           <div class="sub">{{ app_name | default('AD Manager') }}</div>
         </div>
       </div>
@@ -55,7 +55,7 @@
       </header>
       <main class="content" id="view"></main>
       <footer class="app-foot">
-        Built with passion for <b>AegisPass</b> by <b>Jhonattan L. Jimenez</b>
+        Built with passion for <b>kervado</b> by <b>OneByJorah</b>
       </footer>
     </div>
   </div>
@@ -75,7 +75,7 @@
       sso: {{ sso_available|default(false)|tojson }},
       is_admin: {{ is_admin|default(false)|tojson }},
       user: {{ user|default({})|tojson }},
-      company: {{ company|default('AegisPass')|tojson }},
+      company: {{ company|default('kervado')|tojson }},
       app_name: {{ app_name|default('AD Manager')|tojson }}
     });
   </script>
