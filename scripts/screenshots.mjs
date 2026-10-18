@@ -84,6 +84,8 @@ async function captureOne(context, suffix = "") {
   return failed;
 }
 
+// CHROMIUM_PATH: use an existing Chrome/Chromium instead of Playwright's download (handy on a prepared runner).
+// NO_SANDBOX=1: needed when running as root inside some containers.
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: process.env.NO_SANDBOX === "1" ? ["--no-sandbox"] : [],
