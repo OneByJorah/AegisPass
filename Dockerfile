@@ -11,10 +11,15 @@ RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.
 
 COPY . .
 
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser && mkdir -p /app/logs && chown -R appuser:appuser /app
 USER appuser
 
+VOLUME ["/app/logs"]
+
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD ["sh", "-c", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
 
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 

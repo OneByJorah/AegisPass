@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# install.sh — Idempotent deployment for AegisPass
+# install.sh — Idempotent deployment for kervado
 #
 # Safe to run repeatedly. This script is meant to run as the unprivileged
 # app user (appuser) and uses sudo only for the systemd steps.
@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SERVICE_NAME="aegispass"
+SERVICE_NAME="kervado"
 UNIT_SRC="$PROJECT_ROOT/systemd/${SERVICE_NAME}.service"
 UNIT_DST="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -21,7 +21,7 @@ usage() {
     cat <<'EOF'
 Usage: ./deploy/install.sh
 
-Idempotent deployment for AegisPass:
+Idempotent deployment for kervado:
   * Verifies python3.11 is available
   * Creates .venv (if missing) and installs requirements.txt
   * Copies .env.example -> .env (only if .env is missing; you MUST edit it)

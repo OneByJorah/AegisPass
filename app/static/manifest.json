@@ -1,6 +1,6 @@
 {
-  "name": "AegisPass Password SelfService",
-  "short_name": "AegisPass SelfService",
+  "name": "kervado Password SelfService",
+  "short_name": "kervado SelfService",
   "start_url": "/login",
   "display": "standalone",
   "background_color": "#0d1117",
@@ -20,6 +20,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "AegisPass Active Directory password self-service and admin portal.",
+  "description": "kervado Active Directory password self-service and admin portal.",
   "categories": ["productivity", "utilities"]
 }

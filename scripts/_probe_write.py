@@ -10,7 +10,7 @@ if conn.entries:
     print("sample user DN:", dn)
     parent = ",".join(dn.split(",")[1:])  # drop CN=, keep rest
     print("parent OU:", parent)
-    test_ou = "OU=AegisPassAdminTest," + parent
+    test_ou = "OU=kervadoAdminTest," + parent
     try:
         conn.add(test_ou, object_class=["top", "organizationalUnit"])
         print("CREATE OU UNDER parent OK:", test_ou)

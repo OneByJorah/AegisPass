@@ -1,8 +1,8 @@
-"""Deterministic, policy-compliant password generator for aegispass.
+"""Deterministic, policy-compliant password generator for kervado.
 
 Every generated password:
   • is exactly 12 characters long
-  • embeds a AegisPass school short-code (sib, det, loc, mul, abr, ...) as letters
+  • embeds a kervado school short-code (sib, det, loc, mul, abr, ...) as letters
   • embeds the letters of "Jorah" and "One" (scrambled, not as whole words)
   • fills the rest with random digits
   • all characters are shuffled every time so nothing reads as a word
@@ -16,7 +16,7 @@ from __future__ import annotations
 import secrets
 import string
 
-# AegisPass school short-codes (domain-style tokens).
+# kervado school short-codes (domain-style tokens).
 SCHOOL_CODES = [
     "sib", "det", "loc", "mul", "abr", "wod", "czx", "cpx",
     "riv", "gar", "tui", "can", "bos", "cha", "hea", "spr",

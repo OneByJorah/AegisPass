@@ -10,14 +10,14 @@ from app.ad import client
 
 # Use an existing OU that's safe & real: OU=STTJ,DC=example,DC=com (a known container)
 PARENT = "OU=STTJ,DC=example,DC=com"
-DN = "CN=__aegispasstestX," + PARENT
+DN = "CN=__kervadotestX," + PARENT
 STRONG = "Zq7!mK9@xP2#Lw"
 RESET  = "Bn4$rT8@qW1#Mz"
 created = []
 try:
-    op.create_user(DN, {"sAMAccountName": "__aegispasstestX", "givenName": "Test",
+    op.create_user(DN, {"sAMAccountName": "__kervadotestX", "givenName": "Test",
                         "sn": "User", "displayName": "Test User",
-                        "userPrincipalName": "__aegispasstestX@example.com"}, STRONG,
+                        "userPrincipalName": "__kervadotestX@example.com"}, STRONG,
                    force_change=True)
     created.append(DN)
     print("CREATE OK")

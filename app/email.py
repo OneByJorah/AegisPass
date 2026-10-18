@@ -1,4 +1,4 @@
-"""Email delivery for aegispass.
+"""Email delivery for kervado.
 
 Uses the internal district SMTP relay (no authentication required).
 All outbound mail is sent from a single configured sender address.
@@ -56,22 +56,22 @@ def send(to: str, subject: str, body: str, html: Optional[str] = None) -> bool:
 def send_password_reset(user: dict, code: str, expires_min: int = 30) -> bool:
     to = user.get("mail") or user.get("email")
     name = user.get("displayName") or user.get("givenName") or user.get("sAMAccountName") or "user"
-    subject = "AegisPass Password Reset Request"
+    subject = "kervado Password Reset Request"
     body = (
         f"Hello {name},\n\n"
-        f"We received a request to reset your AegisPass password.\n\n"
+        f"We received a request to reset your kervado password.\n\n"
         f"Your verification code is: {code}\n\n"
         f"This code expires in {expires_min} minutes. If you did not request this, "
         f"you can ignore this email — your password will not change.\n\n"
-        f"– AegisPass IT Department"
+        f"– kervado IT Department"
     )
     html = (
         f"<p>Hello {name},</p>"
-        f"<p>We received a request to reset your AegisPass password.</p>"
+        f"<p>We received a request to reset your kervado password.</p>"
         f"<p>Your verification code is: <b>{code}</b></p>"
         f"<p>This code expires in {expires_min} minutes. If you did not request this, "
         f"you can ignore this email.</p>"
-        f"<p>– AegisPass IT Department</p>"
+        f"<p>– kervado IT Department</p>"
     )
     return send(to, subject, body, html)
 
@@ -80,21 +80,21 @@ def send_welcome(user: dict, temp_password: str) -> bool:
     to = user.get("mail") or user.get("email")
     name = user.get("displayName") or user.get("givenName") or user.get("sAMAccountName") or "user"
     uname = user.get("sAMAccountName") or user.get("userPrincipalName") or ""
-    subject = "Welcome to AegisPass — Your Account is Ready"
+    subject = "Welcome to kervado — Your Account is Ready"
     body = (
         f"Hello {name},\n\n"
-        f"Your AegisPass account has been created.\n\n"
+        f"Your kervado account has been created.\n\n"
         f"Username: {uname}\n"
         f"Temporary password: {temp_password}\n\n"
         f"Please sign in and change your password at your first opportunity.\n\n"
-        f"– AegisPass IT Department"
+        f"– kervado IT Department"
     )
     html = (
         f"<p>Hello {name},</p>"
-        f"<p>Your AegisPass account has been created.</p>"
+        f"<p>Your kervado account has been created.</p>"
         f"<p>Username: <b>{uname}</b><br>Temporary password: <b>{temp_password}</b></p>"
         f"<p>Please sign in and change your password at your first opportunity.</p>"
-        f"<p>– AegisPass IT Department</p>"
+        f"<p>– kervado IT Department</p>"
     )
     return send(to, subject, body, html)
 
@@ -106,29 +106,29 @@ def send_password_reset_notice(user: dict, new_password: str) -> bool:
         return False
     name = user.get("displayName") or user.get("givenName") or user.get("sAMAccountName") or "user"
     uname = user.get("sAMAccountName") or user.get("userPrincipalName") or ""
-    subject = "AegisPass — Your Password Was Reset"
+    subject = "kervado — Your Password Was Reset"
     body = (
         f"Hello {name},\n\n"
-        f"Your AegisPass account password was reset by an administrator.\n\n"
+        f"Your kervado account password was reset by an administrator.\n\n"
         f"Username: {uname}\n"
         f"New temporary password: {new_password}\n\n"
         f"Please sign in and change your password at your first opportunity.\n\n"
-        f"– AegisPass IT Department"
+        f"– kervado IT Department"
     )
     html = (
         f"<p>Hello {name},</p>"
-        f"<p>Your AegisPass account password was reset by an administrator.</p>"
+        f"<p>Your kervado account password was reset by an administrator.</p>"
         f"<p>Username: <b>{uname}</b><br>New temporary password: <b>{new_password}</b></p>"
         f"<p>Please sign in and change your password at your first opportunity.</p>"
-        f"<p>– AegisPass IT Department</p>"
+        f"<p>– kervado IT Department</p>"
     )
     return send(to, subject, body, html)
     to = getattr(Config, "ADMIN_ALERT_EMAIL", "")
     if not to:
         return False
-    subject = f"[AegisPass AD] Privileged action: {action}"
+    subject = f"[kervado AD] Privileged action: {action}"
     body = (
-        f"A privileged action was performed in AegisPass.\n\n"
+        f"A privileged action was performed in kervado.\n\n"
         f"Action : {action}\n"
         f"Actor  : {actor}\n"
         f"Target : {target}\n"
@@ -141,19 +141,19 @@ def send_password_reset_notice(user: dict, new_password: str) -> bool:
 def send_expiry_reminder(user: dict, days_left: int) -> bool:
     to = user.get("mail") or user.get("email")
     name = user.get("displayName") or user.get("givenName") or user.get("sAMAccountName") or "user"
-    subject = f"AegisPass Password Expiry Reminder — {days_left} day(s) left"
+    subject = f"kervado Password Expiry Reminder — {days_left} day(s) left"
     body = (
         f"Hello {name},\n\n"
-        f"Your AegisPass password will expire in {days_left} day(s).\n\n"
+        f"Your kervado password will expire in {days_left} day(s).\n\n"
         f"Please change it before it expires to avoid being locked out. "
-        f"You can do this from the AegisPass Self Service portal.\n\n"
-        f"– AegisPass IT Department"
+        f"You can do this from the kervado Self Service portal.\n\n"
+        f"– kervado IT Department"
     )
     html = (
         f"<p>Hello {name},</p>"
-        f"<p>Your AegisPass password will expire in <b>{days_left} day(s)</b>.</p>"
+        f"<p>Your kervado password will expire in <b>{days_left} day(s)</b>.</p>"
         f"<p>Please change it before it expires to avoid being locked out.</p>"
-        f"<p>– AegisPass IT Department</p>"
+        f"<p>– kervado IT Department</p>"
     )
     return send(to, subject, body, html)
 
@@ -161,11 +161,11 @@ def send_expiry_reminder(user: dict, days_left: int) -> bool:
 def send_locked_notice(user: dict) -> bool:
     to = user.get("mail") or user.get("email")
     name = user.get("displayName") or user.get("givenName") or user.get("sAMAccountName") or "user"
-    subject = "AegisPass Account Locked"
+    subject = "kervado Account Locked"
     body = (
         f"Hello {name},\n\n"
-        f"Your AegisPass account has been locked, likely due to too many failed sign-in attempts.\n\n"
+        f"Your kervado account has been locked, likely due to too many failed sign-in attempts.\n\n"
         f"It will unlock automatically or contact the IT Help Desk for assistance.\n\n"
-        f"– AegisPass IT Department"
+        f"– kervado IT Department"
     )
     return send(to, subject, body)

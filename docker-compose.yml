@@ -1,19 +1,29 @@
-version: "3.8"
-
 services:
-  aegispass:
+  kervado:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aegispass
+    image: ghcr.io/onebyjorah/kervado:latest
+    container_name: kervado
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${HOST_PORT:-8000}:8000"
     env_file:
       - .env
     restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=50m
+    volumes:
+      - kervado_logs:/app/logs
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+
+volumes:
+  kervado_logs:

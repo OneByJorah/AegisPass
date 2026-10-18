@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-echo "=== Installing AegisPass ==="
+echo "=== Installing kervado ==="
 
 if ! command -v docker &> /dev/null; then
     echo "Docker is required but not installed. Please install Docker first."
@@ -25,11 +25,11 @@ if [ ! -f .env ]; then
     fi
 fi
 
-echo "Building and starting AegisPass on port 8000..."
+echo "Building and starting kervado on port 8000..."
 if docker compose version &> /dev/null; then
     docker compose up --build -d
 else
     docker-compose up --build -d
 fi
 
-echo "AegisPass installed. Access: http://localhost:8000"
+echo "kervado installed. Access: http://localhost:8000"

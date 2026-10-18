@@ -1,7 +1,7 @@
 {
-  "name": "AegisPass Self Service",
-  "short_name": "AegisPass SSPR",
-  "description": "AegisPass password self-service — login, reset and enroll.",
+  "name": "kervado Self Service",
+  "short_name": "kervado SSPR",
+  "description": "kervado password self-service — login, reset and enroll.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
