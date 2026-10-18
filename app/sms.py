@@ -1,4 +1,4 @@
-"""SMS delivery for aegispass.
+"""SMS delivery for kervado.
 
 Provider-agnostic SMS layer. The app talks to a gateway over the LAN; no
 per-message fee when self-hosted.
@@ -59,7 +59,7 @@ def send(to: str, body: str) -> bool:
 
 
 def send_otp(to: str, code: str, purpose: str = "verification") -> bool:
-    body = f"AegisPass Self-Service {purpose} code: {code}. Do not share this code."
+    body = f"kervado Self-Service {purpose} code: {code}. Do not share this code."
     return send(to, body)
 
 

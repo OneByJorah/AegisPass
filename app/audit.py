@@ -1,4 +1,4 @@
-"""Audit logging for aegispass.
+"""Audit logging for kervado.
 
 Every privileged action (user/group/OU create, modify, reset, delete, unlock,
 enable/disable) is recorded with: timestamp, actor (sAMAccountName), action,

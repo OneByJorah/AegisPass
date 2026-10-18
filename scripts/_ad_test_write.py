@@ -1,20 +1,20 @@
 import os
 from app.ad import client, operations as op
-TEST_OU = "OU=AegisPassAdminTest,DC=example,DC=com"
+TEST_OU = "OU=kervadoAdminTest,DC=example,DC=com"
 os.environ["AD_WRITE_SCOPE_OU"] = TEST_OU.lower()
-for d in ["CN=__aegispasstest2," + TEST_OU, "CN=__srcgrp2," + TEST_OU,
+for d in ["CN=__kervadotest2," + TEST_OU, "CN=__srcgrp2," + TEST_OU,
           "CN=__tgtgrp2," + TEST_OU]:
     try: op.delete_user(d)
     except Exception: pass
     try: op.delete_group(d)
     except Exception: pass
-DN = "CN=__aegispasstest2," + TEST_OU
+DN = "CN=__kervadotest2," + TEST_OU
 STRONG = "Zq7!mK9@xP2#Lw"          # 14 chars, no part of the user name
 RESET  = "Bn4$rT8@qW1#Mz"          # different neutral pw
 try:
-    op.create_user(DN, {"sAMAccountName": "__aegispasstest2", "givenName": "Test",
+    op.create_user(DN, {"sAMAccountName": "__kervadotest2", "givenName": "Test",
                         "sn": "User", "displayName": "Test User",
-                        "userPrincipalName": "__aegispasstest2@example.com"}, STRONG,
+                        "userPrincipalName": "__kervadotest2@example.com"}, STRONG,
                        force_change=True)
     print("CREATE OK")
     u = op.get_user(DN)

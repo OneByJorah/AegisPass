@@ -125,9 +125,9 @@ def totp_setup():
         return fail("authentication required", code="auth", status=401)
     data = request.get_json(force=True) or {}
     sam = _sam()
-    label = data.get("label") or f"AegisPass:{sam}"
+    label = data.get("label") or f"kervado:{sam}"
     secret = pyotp.random_base32()
-    uri = pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name="AegisPass Self-Service")
+    uri = pyotp.TOTP(secret).provisioning_uri(name=label, issuer_name="kervado Self-Service")
     # Build a QR code as inline SVG (no PIL dependency).
     from qrcode.image.svg import SvgPathImage
     img = qrcode.make(uri, image_factory=SvgPathImage)

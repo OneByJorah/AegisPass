@@ -4,5 +4,12 @@ title = "gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Example env files hold placeholders only"
-paths = ['''\.env\.example$''']
+description = "Example env files hold placeholders only; legacy planning/docs contain historical example data"
+paths = [
+    '''\.env\.example$''',
+    '''legacy/''',
+]
+regexes = [
+    # Google's public reCAPTCHA test key (documented example, not a live secret)
+    '''6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe''',
+]

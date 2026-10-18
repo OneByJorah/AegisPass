@@ -1,4 +1,4 @@
-"""Enrollment storage for AegisPass Self-Service.
+"""Enrollment storage for kervado Self-Service.
 
 Enrollment data (recovery email/phone, security question, and the encrypted
 TOTP secret) is persisted in the user's ``extensionAttribute1`` as an

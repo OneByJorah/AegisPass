@@ -30,8 +30,13 @@ class Config:
     SECRET_KEY = _env("SECRET_KEY_FLASK", "change-me-in-production")
     SESSION_LIFETIME_MINUTES = int(_env("SESSION_LIFETIME_MINUTES", "30"))
     DEBUG = _bool("DEBUG", False)
-    APP_NAME = _env("APP_NAME", "AegisPass")
-    COMPANY = _env("COMPANY", "AegisPass")
+    APP_NAME = _env("APP_NAME", "kervado")
+    COMPANY = _env("COMPANY", "kervado")
+
+    # Demo / mock mode — runs with synthetic AD data, no real directory required.
+    DEMO_MODE = _bool("DEMO_MODE", False)
+    DEMO_USERNAME = _env("DEMO_USERNAME", "demo.user")
+    DEMO_PASSWORD = _env("DEMO_PASSWORD", "demo")
 
     # Active Directory (writable, encrypted management channel)
     AD_HOST = _env("AD_HOST", "ad-example.example.com")
@@ -79,11 +84,9 @@ class Config:
     SMTP_HOST = _env("SMTP_HOST", "smtp.example.com")
     SMTP_PORT = int(_env("SMTP_PORT", "25"))
     SMTP_SENDER = _env("SMTP_SENDER", "donoreply@example.com")
-    SMTP_SENDER_NAME = _env("SMTP_SENDER_NAME", "AEGISPASS PASSWORD RESET")
+    SMTP_SENDER_NAME = _env("SMTP_SENDER_NAME", "kervado Password Reset")
     SMTP_USE_TLS = _bool("SMTP_USE_TLS", False)
-    SMTP_SENDER_NAME = _env("SMTP_SENDER_NAME", "AEGISPASS PASSWORD RESET")
-    SMTP_USE_TLS = _bool("SMTP_USE_TLS", False)
-    ADMIN_ALERT_EMAIL = _env("ADMIN_ALERT_EMAIL", "Jhonattan.jimenez@example.com")
+    ADMIN_ALERT_EMAIL = _env("ADMIN_ALERT_EMAIL", "admin@example.com")
     EXPIRY_REMINDER_DAYS = [
         int(x) for x in _env("EXPIRY_REMINDER_DAYS", "7,3").split(",") if x.strip()
     ]

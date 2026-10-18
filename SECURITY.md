@@ -10,7 +10,7 @@ We patch security issues in the latest release of the default branch. Older rele
 
 Please **do not** open a public issue for security vulnerabilities.
 
-Instead, email `security@jorahone.com` with:
+Instead, email `security@example.com` or use [GitHub Security Advisories](https://github.com/OneByJorah/kervado/security/advisories/new) with:
 
 - Affected repository and version/branch.
 - Steps to reproduce or proof-of-concept.

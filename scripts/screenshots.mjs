@@ -1,5 +1,5 @@
 // Captures real screenshots of the running demo stack with Playwright.
-// Usage (stack already running):  BASE_URL=http://127.0.0.1:8080 node scripts/screenshots.mjs
+// Usage (stack already running):  BASE_URL=http://127.0.0.1:8000 node scripts/screenshots.mjs
 // Requires: npm install --no-save playwright && npx playwright install chromium
 //
 // Safety: every page is scanned for private IPs, tailnet IPs, emails, and forbidden words
@@ -11,13 +11,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const BASE = process.env.BASE_URL || "http://127.0.0.1:8080";
+const BASE = process.env.BASE_URL || "http://127.0.0.1:8000";
 const OUT = process.env.OUT_DIR || "docs/screenshots";
 const RECORD = process.env.RECORD === "1";
+const DEMO_USER = process.env.DEMO_USERNAME || "demo.user";
+const DEMO_PASS = process.env.DEMO_PASSWORD || "demo";
 
-// Edit this list per project: one entry per screen worth showing.
+// Edit this list per project: one entry per meaningful screen worth showing.
 const PAGES = [
-  { name: "dashboard", path: "/", waitFor: "#app-ready" },
+  { name: "login", path: "/login", waitFor: ".auth-title" },
+  { name: "dashboard", path: "/app#dashboard", waitFor: "#deviceBox .num", login: true },
 ];
 
 const FORBIDDEN = [
@@ -36,41 +39,79 @@ fs.mkdirSync(OUT, { recursive: true });
 const videoDir = path.join("tmp", "videos");
 if (RECORD) fs.mkdirSync(videoDir, { recursive: true });
 
+async function login(page) {
+  await page.goto(new URL("/login", BASE).toString(), { waitUntil: "networkidle" });
+  await page.waitForSelector("#username", { timeout: 15000 });
+  await page.fill("#username", DEMO_USER);
+  await page.fill("#password", DEMO_PASS);
+  await page.click("#login");
+  // Wait for the SPA shell to load after the JSON login response.
+  await page.waitForURL(/\/app/, { timeout: 15000 });
+  await page.waitForSelector("#app", { timeout: 15000 });
+}
+
+async function captureOne(context, suffix = "") {
+  let failed = false;
+  for (const p of PAGES) {
+    const page = await context.newPage();
+    if (p.login) {
+      await login(page);
+      // After login, navigate to the requested view in the same session.
+      await page.goto(new URL(p.path, BASE).toString(), { waitUntil: "networkidle" });
+    } else {
+      await page.goto(new URL(p.path, BASE).toString(), { waitUntil: "networkidle" });
+    }
+    if (p.waitFor) {
+      await page.waitForSelector(p.waitFor, { timeout: 15000 });
+    }
+    // Let any in-flight dashboard data settle.
+    await page.waitForTimeout(500);
+
+    const text = (await page.evaluate(() => document.body.innerText)) + "\n" + (await page.title());
+    const hits = FORBIDDEN.filter((f) => f.re.test(text)).map((f) => f.label);
+    if (hits.length) {
+      console.error(`SCRUB FAIL on ${p.name}${suffix}: found ${hits.join(", ")}. No screenshot written.`);
+      failed = true;
+      await page.close();
+      continue;
+    }
+
+    const file = path.join(OUT, `${p.name}${suffix}.png`);
+    await page.screenshot({ path: file, fullPage: true });
+    console.log(`saved ${file}`);
+    await page.close();
+  }
+  return failed;
+}
+
 // CHROMIUM_PATH: use an existing Chrome/Chromium instead of Playwright's download (handy on a prepared runner).
 // NO_SANDBOX=1: needed when running as root inside some containers.
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: process.env.NO_SANDBOX === "1" ? ["--no-sandbox"] : [],
 });
-const context = await browser.newContext({
+
+// Desktop captures at 1440x900 @2x, dark colour scheme.
+const desktopContext = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   deviceScaleFactor: 2,
   colorScheme: "dark",
   ...(RECORD ? { recordVideo: { dir: videoDir, size: { width: 1280, height: 720 } } } : {}),
 });
+let failed = await captureOne(desktopContext, "");
+await desktopContext.close();
 
-let failed = false;
-for (const p of PAGES) {
-  const page = await context.newPage();
-  await page.goto(new URL(p.path, BASE).toString(), { waitUntil: "networkidle" });
-  if (p.waitFor) await page.waitForSelector(p.waitFor, { timeout: 15000 });
+// Mobile captures of the login/reset portal.
+const mobileContext = await browser.newContext({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 2,
+  colorScheme: "dark",
+  userAgent:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+});
+failed = (await captureOne(mobileContext, "-mobile")) || failed;
+await mobileContext.close();
 
-  const text = (await page.evaluate(() => document.body.innerText)) + "\n" + (await page.title());
-  const hits = FORBIDDEN.filter((f) => f.re.test(text)).map((f) => f.label);
-  if (hits.length) {
-    console.error(`SCRUB FAIL on ${p.name}: found ${hits.join(", ")}. No screenshot written.`);
-    failed = true;
-    await page.close();
-    continue;
-  }
-
-  const file = path.join(OUT, `${p.name}.png`);
-  await page.screenshot({ path: file, fullPage: true });
-  console.log(`saved ${file}`);
-  await page.close();
-}
-
-await context.close();
 await browser.close();
 
 if (RECORD && !failed) {

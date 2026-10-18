@@ -1,6 +1,6 @@
 # Self-hosted SMS gateway (free, your own number)
 
-This lets the AegisPass Self-Service portal send SMS (OTP codes, recovery
+This lets the kervado Self-Service portal send SMS (OTP codes, recovery
 notices) **with no per-message fee**, using a USB GSM/4G modem and a SIM
 card you already have.
 
@@ -25,15 +25,15 @@ The REST API will be available at `http://<gateway-host>:8080/messages`:
 ```http
 POST /messages
 Content-Type: application/json
-{ "text": "Your AegisPass code: 123456", "recipients": ["+13405551234"] }
+{ "text": "Your kervado code: 123456", "recipients": ["+13405551234"] }
 ```
 
-## Wire it into aegispass
+## Wire it into kervado
 
 Set in `.env`:
 
 ```ini
-SMS_PROAegisPassR=gammu
+SMS_PROVIDER=gammu
 SMS_GATEWAY_URL=http://<gateway-host>:8080
 SMS_API_TOKEN=            # only if you enabled auth on the gateway
 ```
@@ -44,13 +44,13 @@ Then send a test from the admin **Workflows** panel
 ```bash
 curl -k -X POST https://passwordreset.example.com/api/sms/test \
   -H 'Content-Type: application/json' \
-  -d '{"to":"+13405551234","body":"AegisPass test"}'
+  -d '{"to":"+13405551234","body":"kervado test"}'
 ```
 
 ## Alternative: Twilio (SaaS number)
 If you prefer a cloud number instead of self-hosting, set:
 ```ini
-SMS_PROAegisPassR=twilio
+SMS_PROVIDER=twilio
 TWILIO_ACCOUNT_SID=...
 TWILIO_AUTH_TOKEN=...
 TWILIO_FROM=+1...
@@ -58,7 +58,7 @@ TWILIO_FROM=+1...
 (`pip install twilio` first.) This incurs per-message cost.
 
 ## Dev / testing
-Set `SMS_PROAegisPassR=mock` — sends are logged to the audit trail and return
+Set `SMS_PROVIDER=mock` — sends are logged to the audit trail and return
 `True` without contacting any gateway. Good for local development.
 
 ## Security notes

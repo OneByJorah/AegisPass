@@ -79,5 +79,5 @@ def test_sms():
     if not to:
         return fail("Provide 'to' (mobile number)", code="validation")
     from app.sms import send
-    ok_ = send(to, data.get("body", "AegisPass Self-Service: SMS gateway test message."))
+    ok_ = send(to, data.get("body", "kervado Self-Service: SMS gateway test message."))
     return ok({"sent": ok_, "provider": (Config.SMS_PROVIDER or "none")})

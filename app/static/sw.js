@@ -1,4 +1,4 @@
-const CACHE_NAME = "aegispass-selfservice-v1";
+const CACHE_NAME = "kervado-selfservice-v1";
 const ASSETS = [
   "/login",
   "/static/css/style.css?v=3",

@@ -1,4 +1,4 @@
-"""Workflow engine for aegispass.
+"""Workflow engine for kervado.
 
 A *workflow* is a named, toggleable automation that fires on an event
 (password reset requested, account created, privileged action, password

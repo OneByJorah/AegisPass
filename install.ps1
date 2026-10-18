@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Windows installer for AegisPass via Docker Desktop.
+    Windows installer for kervado via Docker Desktop.
 #>
 param(
     [switch]$SkipStart
@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Installing AegisPass ===" -ForegroundColor Cyan
+Write-Host "=== Installing kervado ===" -ForegroundColor Cyan
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     Write-Error "Docker Desktop is required but not found. Install it from https://www.docker.com/products/docker-desktop/"
@@ -29,9 +29,9 @@ if (-not (Test-Path $envFile)) {
 $composeCmd = if (Get-Command "docker" -ErrorAction SilentlyContinue) { "docker compose" } else { "docker-compose" }
 
 if (-not $SkipStart) {
-    Write-Host "Building and starting AegisPass on port 8000..." -ForegroundColor Green
+    Write-Host "Building and starting kervado on port 8000..." -ForegroundColor Green
     Invoke-Expression "$composeCmd up --build -d"
-    Write-Host "AegisPass installed. Access: http://localhost:8000" -ForegroundColor Green
+    Write-Host "kervado installed. Access: http://localhost:8000" -ForegroundColor Green
 } else {
     Write-Host "Skipped start. Run '$composeCmd up --build -d' when ready." -ForegroundColor Yellow
 }

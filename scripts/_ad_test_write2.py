@@ -2,8 +2,8 @@ import os
 os.environ["AD_WRITE_SCOPE_OU"] = "dc=example,dc=com"   # allow whole domain (matching root probe scope)
 from app.ad import operations as op
 from app.ad import client
-TEST_OU = "OU=AegisPassAdminTest,DC=example,DC=com"
-DN = "CN=__aegispasstest3," + TEST_OU
+TEST_OU = "OU=kervadoAdminTest,DC=example,DC=com"
+DN = "CN=__kervadotest3," + TEST_OU
 STRONG = "Zq7!mK9@xP2#Lw"
 RESET  = "Bn4$rT8@qW1#Mz"
 try:
@@ -12,9 +12,9 @@ try:
 except Exception as e:
     print("OU note:", repr(e))
 try:
-    op.create_user(DN, {"sAMAccountName": "__aegispasstest3", "givenName": "Test",
+    op.create_user(DN, {"sAMAccountName": "__kervadotest3", "givenName": "Test",
                         "sn": "User", "displayName": "Test User",
-                        "userPrincipalName": "__aegispasstest3@example.com"}, STRONG, force_change=True)
+                        "userPrincipalName": "__kervadotest3@example.com"}, STRONG, force_change=True)
     print("CREATE OK")
     u = op.get_user(DN); print("fetched:", u["sAMAccountName"], "| UAC:", u.get("userAccountControl"))
     op.set_user_enabled(DN, False); print("DISABLE OK")

@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AegisPass Self Service</title>
+  <title>kervado Self Service</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <meta name="theme-color" content="#FFB300">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="AegisPass SelfService">
+  <meta name="apple-mobile-web-app-title" content="kervado SelfService">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='brand/viseal.png') }}">
   <style>
     :root{ --brand:#1a1206; --brand-2:#3d2a08; --amber:#FFB300; --ok:#22c55e; --warn:#f59e0b; --off:#94a3b8; }
@@ -100,9 +100,9 @@
 <body>
   <!-- Mobile install banner -->
   <div id="installBanner">
-    <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass">
+    <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="kervado">
     <div class="txt">
-      <div class="title">Install AegisPass SelfService</div>
+      <div class="title">Install kervado SelfService</div>
       <div class="sub">Add this web app to your home screen for quick access.</div>
     </div>
     <button onclick="doInstall()">Install</button>
@@ -116,10 +116,10 @@
           <div class="logo-ring"></div>
           <div class="logo-ring"></div>
           <div class="logo-ring"></div>
-          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="AegisPass Seal">
+          <img src="{{ url_for('static', filename='brand/viseal.png') }}" alt="kervado Seal">
         </div>
         <h1 class="auth-title"><strong>Password</strong> SelfService</h1>
-        <p class="auth-subtitle">Enter your AegisPass username to login</p>
+        <p class="auth-subtitle">Enter your kervado username to login</p>
       </div>
 
       <div class="form-wrap">
@@ -221,7 +221,7 @@
     function hideInstallBanner(){
       const b = document.getElementById('installBanner');
       if (b) b.style.display = 'none';
-      try { localStorage.setItem('aegispass-install-dismissed', Date.now().toString()); } catch(e){}
+      try { localStorage.setItem('kervado-install-dismissed', Date.now().toString()); } catch(e){}
     }
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -238,7 +238,7 @@
     }
     // also show once on mobile after a short delay if already installable
     setTimeout(() => {
-      const dismissed = localStorage.getItem('aegispass-install-dismissed');
+      const dismissed = localStorage.getItem('kervado-install-dismissed');
       if (isMobile() && !dismissed && !window.matchMedia('(display-mode: standalone)').matches) {
         showInstallBanner();
       }

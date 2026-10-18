@@ -1,12 +1,12 @@
 /* ============================================================
-   aegispass — front-end app core
+   kervado — front-end app core
    Vanilla JS SPA shell: routing, API client, toasts, modals,
    command palette. Views are mounted into #view.
    ============================================================ */
 "use strict";
 
 const App = {
-  state: { user: null, is_admin: false, sso: false, company: "AegisPass", app_name: "AD Manager", view: "dashboard" },
+  state: { user: null, is_admin: false, sso: false, company: "kervado", app_name: "AD Manager", view: "dashboard" },
   views: {},          // name -> render(container) function
   paletteItems: [],   // built at boot
 };
@@ -592,7 +592,7 @@ function showCreateUser() {
         <div class="field"><label>Email</label><input class="input" name="mail" placeholder="jdoe@example.com"></div>
       </div>
       <div class="field"><label>Target OU</label><input class="input" name="ou" value="OU=STTJ,DC=example,DC=com"></div>
-      <label class="check"><input type="checkbox" name="autopw" checked> Auto-generate a secure 12-char password (embeds a AegisPass school code + Jorah + One)</label>
+      <label class="check"><input type="checkbox" name="autopw" checked> Auto-generate a secure 12-char password (embeds a kervado school code + Jorah + One)</label>
       <div class="field" id="cuPwWrap" style="display:none"><label>Temporary password</label><input class="input" name="pw" placeholder="Min 8 chars, complex"></div>
       <label class="check"><input type="checkbox" name="force" checked> User must change at next logon</label>
       <p class="muted tiny" id="cuMsg"></p>
@@ -623,7 +623,7 @@ function showCreateUser() {
           <div class="modal-body">
             <p><b>${esc(sam)}</b> was provisioned. Share this temporary password securely:</p>
             <div class="codebox" style="font-family:monospace;font-size:18px;background:var(--surface-2);padding:12px;border-radius:8px;letter-spacing:1px">${esc(gen)}</div>
-            <p class="muted tiny">12 characters · includes a AegisPass school code, "Jorah" and "One". User must change it at next logon.</p>
+            <p class="muted tiny">12 characters · includes a kervado school code, "Jorah" and "One". User must change it at next logon.</p>
           </div>
           <div class="modal-foot"><button class="btn primary" data-close type="button">Done</button></div>`);
         routeTo("users");
@@ -952,7 +952,7 @@ let _totpSecret = "";
 async function loadTotpQr() {
   const box = document.getElementById("qrBox");
   try {
-    const r = await api("/api/enrollment/totp/setup", { method:"POST", body: JSON.stringify({label:"AegisPass:"+(App.state.user.sAMAccountName||"")}) });
+    const r = await api("/api/enrollment/totp/setup", { method:"POST", body: JSON.stringify({label:"kervado:"+(App.state.user.sAMAccountName||"")}) });
     _totpSecret = r.secret;
     box.innerHTML = `<div style="display:flex;justify-content:center">${r.qr_svg}</div>
       <div class="muted tiny" style="margin-top:8px;text-align:center">Secret (manual): <code>${r.secret}</code></div>`;

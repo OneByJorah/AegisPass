@@ -481,3 +481,15 @@ def list_ous(parent_dn: str = "") -> list[dict]:
     out = [client.entry_to_dict(e) for e in conn.entries]
     conn.unbind()
     return out
+
+
+# Demo / mock mode swaps in an in-memory backend so the app renders real screens
+# without contacting a live directory.
+if Config.DEMO_MODE:
+    from app.ad import demo
+    for _demo_name in dir(demo):
+        if _demo_name.startswith("_"):
+            continue
+        _demo_fn = getattr(demo, _demo_name)
+        if callable(_demo_fn) and _demo_name in globals():
+            globals()[_demo_name] = _demo_fn
