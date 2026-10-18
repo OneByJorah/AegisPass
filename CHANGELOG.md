@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1](https://github.com/OneByJorah/kervado/compare/v0.1.0...v0.1.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* wire Dockerfile to real Flask app, correct README stack description, refresh screenshot ([a0aaa83](https://github.com/OneByJorah/kervado/commit/a0aaa83aa90b94cf2b9bf5bb9d741fbbedf93479))
+
 ## [1.0.0] — 2026-07-18
 
 ### Initial release
